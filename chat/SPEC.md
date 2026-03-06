@@ -17,6 +17,8 @@
  ├─ client.ps1
  ├─ tiktok-server.ps1
  ├─ tiktok-clinet.ps1
+ ├─ tiktok-stream-server.ps1
+ ├─ tiktok-stream-client.ps1
  ├─ SPEC.md
  └─ HANDOFF.md
 ```
@@ -180,3 +182,5 @@ pwsh -File .\client.ps1 -ServerUrl http://192.168.0.10:9999
 
 - `tiktok-server.ps1`: `POST /tiktok` 본문이 `tick`이면 `tock` 반환
 - `tiktok-clinet.ps1`: 서버에 `tick` 전송 후 응답 출력
+- `tiktok-stream-server.ps1`: `GET /stream` SSE 연결 유지, `POST /tick` 본문이 `tick`이면 모든 스트림에 `tock` 이벤트 전송
+- `tiktok-stream-client.ps1`: SSE 스트림에 연결하고, 옵션으로 `tick`을 전송한 뒤 첫 이벤트를 출력

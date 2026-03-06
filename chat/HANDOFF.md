@@ -52,3 +52,9 @@
   - `tiktok-server.ps1`: lightweight HTTP server (`POST /tiktok`) returning `tock` when request body is `tick`.
   - `tiktok-clinet.ps1`: tiny client that posts `tick` and prints server response.
   - Purpose: quick internal network connectivity verification, independent from main chat flow.
+
+- Added SSE smoke-test utilities in `/chat`:
+  - `tiktok-stream-server.ps1`: minimal SSE server with `GET /stream`, `POST /tick`, and `GET /health`.
+  - Server keeps only active stream connections in memory and broadcasts `event: tock` / `data: tock` frames on each valid tick.
+  - `tiktok-stream-client.ps1`: connects to `/stream`, optionally sends one tick via `-SendTick`, and prints the first event received.
+  - Intended to validate the HTTP-only streaming approach before refactoring main chat to SSE.
