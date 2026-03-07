@@ -18,6 +18,7 @@
 ```text
 /chat
  ├─ server.ps1
+ ├─ client.ps1
  ├─ index.html
  ├─ app.js
  ├─ style.css
@@ -33,6 +34,7 @@
 - 서버는 내부망에서 접근 가능한 `ip:port` 로 실행된다.
 - 클라이언트는 별도 HTTP 서버로 제공되지 않는다.
 - 사용자는 브라우저에서 `file:///.../index.html` 을 직접 연다.
+- 필요 시 `client.ps1` 로 정적 파일을 `http://localhost:3000/` 에서 열 수 있다.
 - 클라이언트는 브라우저 내 WebSocket API로 `ws://{server-ip}:{port}/` 에 직접 연결한다.
 - `localhost` 고정 구성을 기본 전제로 삼지 않는다.
 
@@ -62,7 +64,14 @@
 - default server port: `9999`
 - reconnect delay: `2` seconds (선택)
 
-필요 시 실행 인자가 아니라 파일 내부 상수를 직접 수정한다.
+### `client.ps1`
+
+- static file port: `3000`
+- static host: `localhost`
+- static root: 실행 시 전달하는 절대경로
+- served files: `/`, `/index.html`, `/app.js`, `/style.css`
+
+`client.ps1` 는 정적 파일이 있는 절대경로를 실행 시 인자로 받는다.
 
 ## 6. WebSocket Contract
 
@@ -135,6 +144,8 @@ Rules:
 ## 9. Client Behavior
 
 - 사용자는 `index.html` 을 브라우저에서 직접 연다.
+- 또는 `client.ps1` 실행 후 `http://localhost:3000/` 으로 연다.
+- `client.ps1` 실행 예시: `.\client.ps1 C:\chat`
 - 화면에는 최소한 아래 요소만 둔다.
   - server ip 입력
   - port 입력
@@ -167,11 +178,12 @@ Rules:
 ## 11. Test Checklist
 
 1. 브라우저에서 `file://` 로 `index.html` 을 직접 열어도 동작한다.
-2. 서로 다른 브라우저 창 또는 다른 장치 2개 이상이 같은 `ws://ip:port` 서버에 연결된다.
-3. A가 보낸 메시지가 서버 저장 없이 A/B 모두에게 즉시 표시된다.
-4. 연결이 끊긴 동안 발생한 메시지는 복구되지 않는다.
-5. 서버는 최소 검증만 수행하고 정상 입력 기준으로 계속 처리한다.
-6. 내부망 다른 장치에서 서버 `ip:port` 로 접속 가능하다.
+2. `client.ps1` 실행 후 `http://localhost:3000/` 으로 열어도 동작한다.
+3. 서로 다른 브라우저 창 또는 다른 장치 2개 이상이 같은 `ws://ip:port` 서버에 연결된다.
+4. A가 보낸 메시지가 서버 저장 없이 A/B 모두에게 즉시 표시된다.
+5. 연결이 끊긴 동안 발생한 메시지는 복구되지 않는다.
+6. 서버는 최소 검증만 수행하고 정상 입력 기준으로 계속 처리한다.
+7. 내부망 다른 장치에서 서버 `ip:port` 로 접속 가능하다.
 
 ## 12. Implementation Notes
 
