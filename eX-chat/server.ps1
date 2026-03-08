@@ -57,6 +57,10 @@ function Get-ClientLabel {
     )
 
     $parts = $Address.ToString().Split(".")
+    if ($parts.Length -lt 4) {
+        return "unknown"
+    }
+
     return "{0}.{1}" -f $parts[2], $parts[3]
 }
 
@@ -122,6 +126,7 @@ function Invoke-ClientHandler {
             }
 
             if ($result.MessageType -ne [System.Net.WebSockets.WebSocketMessageType]::Text) {
+                [void]$builder.Clear()
                 continue
             }
 
@@ -171,32 +176,6 @@ function Invoke-ClientHandler {
             $Socket.Dispose()
         } catch {
         }
-    }
-}
-
-function Start-ClientHandler {
-    param(
-        [Parameter(Mandatory = $true)]
-        [System.Net.WebSockets.WebSocket]$Socket,
-
-        [Parameter(Mandatory = $true)]
-        [string]$Label,
-
-        [Parameter(Mandatory = $true)]
-        [System.Collections.Hashtable]$State,
-
-        [Parameter(Mandatory = $true)]
-        [System.Management.Automation.Runspaces.RunspacePool]$RunspacePool
-    )
-
-    $ps = [powershell]::Create()
-    $ps.RunspacePool = $RunspacePool
-    $null = $ps.AddCommand("Invoke-ClientHandler").AddArgument($Socket).AddArgument($Label).AddArgument($State)
-    $handle = $ps.BeginInvoke()
-
-    return [pscustomobject]@{
-        PowerShell = $ps
-        Handle = $handle
     }
 }
 
@@ -257,7 +236,11 @@ function Start-EXChat {
                         text = "$label joined"
                     }
 
-                    [void]$handlers.Add((Start-ClientHandler -Socket $socket -Label $label -State $state -RunspacePool $runspacePool))
+                    $ps = [powershell]::Create()
+                    $ps.RunspacePool = $runspacePool
+                    $null = $ps.AddCommand("Invoke-ClientHandler").AddArgument($socket).AddArgument($label).AddArgument($state)
+                    $null = $ps.BeginInvoke()
+                    [void]$handlers.Add($ps)
                 } catch {
                     if ($context.Response.OutputStream.CanWrite) {
                         Send-TextResponse -Response $context.Response -Text "WebSocket accept failed" -StatusCode 500
@@ -292,12 +275,12 @@ function Start-EXChat {
     } finally {
         foreach ($handler in @($handlers)) {
             try {
-                $handler.PowerShell.Stop()
+                $handler.Stop()
             } catch {
             }
 
             try {
-                $handler.PowerShell.Dispose()
+                $handler.Dispose()
             } catch {
             }
         }

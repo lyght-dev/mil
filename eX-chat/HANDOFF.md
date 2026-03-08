@@ -13,6 +13,9 @@
 - 후속 리뷰 반영으로 `server.ps1`와 `script.js`를 최소 구현 방향으로 단순화함.
 - 브로드캐스트 경로 중복 제거, `SemaphoreSlim` 제거, JS 자동 재연결 제거, JSON parse fallback 제거를 반영함.
 - 추가 정리: `server.ps1`의 handler runspace 실행부에서 문자열 스크립트 `$script` 사용을 제거하고, top-level 함수 `Invoke-ClientHandler`를 runspace pool에 등록해 `AddCommand(...)`로 호출하도록 변경함.
+- 추가 정리: `Get-ClientLabel`은 IPv4 파싱 실패 시 `unknown`을 반환하도록 수정함.
+- 추가 정리: text가 아닌 WebSocket 프레임 수신 시 내부 `StringBuilder`를 비우도록 수정함.
+- 추가 정리: `Start-ClientHandler` 래퍼 함수를 제거하고, 연결 수락 직후 `Invoke-ClientHandler`를 runspace pool에 직접 올리는 형태로 한 단계 단순화함.
 
 ### 산출물
 - `eX-chat/SPEC.md`
@@ -27,6 +30,9 @@
   - 접속/종료 시스템 메시지 전송
   - 후속 정리: 브로드캐스트 함수를 단일 경로로 유지하고 과한 동시성 제어 제거
   - 후속 정리: handler 코드를 top-level 함수로 승격하고 runspace `InitialSessionState`에 함수 등록
+  - 후속 정리: IPv4 파싱 실패 시 `unknown`으로 폴백
+  - 후속 정리: non-text frame 수신 시 누적 버퍼 초기화
+  - 후속 정리: handler 시작 래퍼 함수 제거
 - `eX-chat/index.html`
   - 단일 채팅 화면 구성
 - `eX-chat/script.js`
@@ -49,3 +55,7 @@
 - `2026-03-08` 추가 리뷰에서 지적된 과한 일반화 요소는 정리 완료.
 - 현재 구현은 정적 파일 서빙, 단일 JSON 브로드캐스트 경로, 기본 연결 종료 처리 정도만 남긴 최소 형태다.
 - 문자열 기반 handler 스크립트는 제거됐고, 편집기 자동완성이 가능한 top-level 함수 구조로 정리됐다.
+- 현재도 client receive loop는 runspace pool을 사용한다. 이 층까지 완전히 제거하려면 WebSocket 처리 구조를 더 크게 바꿔야 한다.
+- 같은 날 `server.ps1` 재검토 결과, 이전 대비 확실히 단순해졌지만 runspace `InitialSessionState` 함수 주입과 `Start-ClientHandler` 래퍼는 여전히 임시 단일 채팅 서버 기준으로는 다소 무거운 구조로 평가함.
+- `Get-ClientLabel`은 현재 IPv4 형식을 그대로 가정하고 `$parts[2]`, `$parts[3]`를 읽으므로 예상과 다른 주소 형식이 오면 오류 가능성이 있다. 스펙상 복잡한 검증은 불필요하지만, 최소 대체 문자열 처리와 비교하면 지금은 얇지만 거친 상태다.
+- `Invoke-ClientHandler`는 text가 아닌 프레임을 만났을 때 누적 버퍼를 비우지 않고 `continue`하므로 혼합 프레임 입력 시 이전 조각이 남을 수 있다. 현재 브라우저 JS만 유일한 요청자라는 전제에서는 실사용 영향은 낮다.
