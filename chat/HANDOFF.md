@@ -1,5 +1,39 @@
 # Chat Handoff
 
+## 2026-03-08 (session 5)
+
+- `chat/server.ps1` 의 listener 관련 설정을 조합식 상수 대신 literal 고정값으로 정리했다.
+- `$Port`, `$BindAddress`, `$ApiPath` 를 제거하고 `http://+:9999/`, `http://+:9999/api/`, `ws://{server-ip}:9999/api/` 를 직접 상수로 두었다.
+- `chat/server/main.ps1` 도 같은 전제에 맞춰 WebSocket 경로 비교를 `"/api/"` literal로 줄이고, 접속 안내 로그는 `$ClientConnectUrl` 만 사용하도록 정리했다.
+
+## 2026-03-08 (session 4)
+
+- 추가 조건(서버 ps1과 static 파일은 같은 경로, 서버 실행은 상대경로 고정)에 맞춰 경로 처리 코드를 더 단순화했다.
+- `chat/server.ps1` 의 module 로드는 `$PSScriptRoot` 기반이 아니라 `./server/*.ps1` 상대경로 dot-source로 정리했다.
+- `chat/server/static.ps1` 에서 `StaticRoot` 파라미터와 `Join-Path`를 제거하고, 라우팅된 파일명을 그대로 `ReadAllBytes` 하도록 줄였다.
+- `chat/server/main.ps1` 에서 static root 변수와 전달 인자를 제거해 호출부를 최소화했다.
+
+## 2026-03-08 (session 3)
+
+- `chat/server.ps1` 를 bootstrap entrypoint로 줄이고, 실제 함수 구현을 `chat/server/main.ps1`, `chat/server/socket.ps1`, `chat/server/static.ps1` 로 분리했다.
+- 실행 경로는 동일하게 유지했다. `server.ps1` 가 세 파일을 dot-source 한 뒤 `Main` 을 호출하므로 기존 실행 방식(`./server.ps1`)은 바뀌지 않는다.
+- 기능 동작은 유지하면서도 파일 책임을 `main(accept loop/worker 관리)`, `socket(WebSocket receive/broadcast)`, `static(정적 파일 응답)` 으로 나눠 유지보수성을 높였다.
+
+## 2026-03-08 (session 2)
+
+- `chat/server.ps1` 에 정적 파일 응답 함수(`Write-StaticResponse`)를 추가해 `/`, `/index.html`, `/app.js`, `/style.css` 를 동일 프로세스에서 서빙하도록 수정했다.
+- listener prefix를 `http://+:9999/`(정적) + `http://+:9999/api/`(WebSocket) 2개로 등록해 `client.ps1` 분리 실행 없이도 동작하도록 정리했다.
+- WebSocket 업그레이드는 `/api/` 경로에서만 허용하도록 분기해 정적 요청과 충돌하지 않게 했다.
+- WebSocket 경로 허용 조건은 `/api` 와 `/api/` 동시 허용에서 `/api/` 단일 경로 허용으로 줄여, 요구사항 기준 최소 라우팅만 남겼다.
+- `chat/app.js` 는 `window.location` 기반으로 기본 host/port를 계산하도록 바꿔, 서버가 직접 서빙한 페이지에서 같은 서버의 `/api/` 로 자동 연결되게 했다.
+
+## 2026-03-08
+
+- `chat/server.ps1` 의 바인드 주소를 `localhost` 에서 `+` 로 변경해 IP와 무관하게 `:9999` 로 요청을 수신하도록 수정했다.
+- `chat/server.ps1` 에 WebSocket/HTTP 기본 경로 상수 `$ApiPath = "/api/"` 를 추가하고 listener prefix를 `http://+:9999/api/` 로 고정했다.
+- 클라이언트 접속 안내 로그도 `ws://{server-ip}:9999/api/` 형식으로 갱신했다.
+- `chat/app.js` 에 `SERVER_PATH = "/api/"` 상수를 추가하고 WebSocket 연결 URL을 `ws://{server-ip}:9999/api/` 경로로 변경했다.
+
 ## 2026-03-07
 
 - `chat/SPEC.md` 를 기존 `SSE + client.ps1` 구조에서 `PowerShell WebSocket 서버 + file:// index.html 클라이언트` 구조로 전면 개정했다.
@@ -37,9 +71,9 @@
 ## Next Session Notes
 
 - 현재 `server.ps1` 는 존재한다.
-- `BindAddress` 는 `SERVER_IP` placeholder 이므로 실제 내부망 IP로 먼저 수정해야 한다.
+- `BindAddress` 는 `+` 이므로 모든 NIC에서 `:9999/`(static) 과 `:9999/api/`(WebSocket) 요청을 받는다.
 - 클라이언트는 `file://` 로 바로 열 수 있게 정적 파일만 사용한다.
-- `client.ps1` 를 쓰려면 `http://localhost:3000/` 으로 접속하면 된다.
-- `client.ps1` 실행 시에는 정적 파일이 있는 절대경로를 인자로 넘겨야 한다.
+- 기본 사용 방식은 `server.ps1` 단독 실행 후 `http://<server-ip>:9999/` 접속이다.
+- `client.ps1` 는 보조 스크립트로 남아 있으나 현재 구조에서 필수는 아니다.
 - 다음 작업은 실제 내부망 환경에서 `server.ps1` 와 브라우저 클라이언트를 함께 열어 WebSocket 연결과 브로드캐스트를 확인하는 것이다.
 - 구현 시 핵심은 "최소 기능의 WebSocket 연결 테스트용 채팅"이며, 불필요한 validation 과 기능 확장은 넣지 않는 것이다.

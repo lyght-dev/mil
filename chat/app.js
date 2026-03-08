@@ -1,5 +1,6 @@
-const SERVER_IP = "localhost";
-const SERVER_PORT = "9999";
+const SERVER_IP = window.location.hostname || "localhost";
+const SERVER_PORT = window.location.port || "9999";
+const SERVER_PATH = "/api/";
 
 let socket = null;
 let currentName = "";
@@ -62,7 +63,7 @@ function handleMessageSubmit(event) {
 }
 
 function connectSocket() {
-  const url = "ws://" + SERVER_IP + ":" + SERVER_PORT + "/";
+  const url = "ws://" + SERVER_IP + ":" + SERVER_PORT + SERVER_PATH;
 
   closeExistingSocket();
   updateConnectionState("connecting", "서버에 연결 중입니다: " + url);
