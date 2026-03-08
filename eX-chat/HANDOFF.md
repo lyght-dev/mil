@@ -16,6 +16,10 @@
 - 추가 정리: `Get-ClientLabel`은 IPv4 파싱 실패 시 `unknown`을 반환하도록 수정함.
 - 추가 정리: text가 아닌 WebSocket 프레임 수신 시 내부 `StringBuilder`를 비우도록 수정함.
 - 추가 정리: `Start-ClientHandler` 래퍼 함수를 제거하고, 연결 수락 직후 `Invoke-ClientHandler`를 runspace pool에 직접 올리는 형태로 한 단계 단순화함.
+- 추가 정리: `Start-EXChat`에서 `Port`, `BindAddress`, `AppRoot` 파라미터를 제거하고 `http://+:8888/` 고정 구조로 단순화함.
+- 추가 정리: `/ws` 수락 직후 처리 블록을 `Start-ChatClient`로 분리함.
+- 추가 정리: WebSocket 종료/Dispose 공통 처리를 `Close-ClientSocket`으로 분리함.
+- 추가 정리: JSON 직렬화 + UTF8 + `ArraySegment` 생성을 `New-JsonSegment`로 분리함.
 
 ### 산출물
 - `eX-chat/SPEC.md`
@@ -33,6 +37,9 @@
   - 후속 정리: IPv4 파싱 실패 시 `unknown`으로 폴백
   - 후속 정리: non-text frame 수신 시 누적 버퍼 초기화
   - 후속 정리: handler 시작 래퍼 함수 제거
+  - 후속 정리: 서버 바인드와 포트는 `http://+:8888/` 고정
+  - 후속 정리: `/ws` accept 이후 처리와 소켓 종료 처리를 별도 함수로 정리
+  - 후속 정리: JSON 송신 전처리를 별도 함수로 정리
 - `eX-chat/index.html`
   - 단일 채팅 화면 구성
 - `eX-chat/script.js`
@@ -49,13 +56,11 @@
 - IP 표기는 IPv4 주소 문자열에서 마지막 두 옥텟 `C.D`만 잘라 쓰는 단순 구현이다.
 - timestamp는 서버가 아니라 브라우저 수신 시점 기준으로 표시됨.
 - WebSocket 브로드캐스트는 단일 방 전제의 간단한 runspace 기반 구현이다.
-- 실제 Windows PowerShell 환경에서 `HttpListener`의 `+` 바인딩 권한 또는 URL ACL 이슈가 있을 수 있으므로, 필요 시 `BindAddress`를 `localhost` 또는 특정 IP로 바꿔 검증하면 된다.
+- 실제 Windows PowerShell 환경에서 `HttpListener`의 `+` 바인딩 권한 또는 URL ACL 이슈가 있을 수 있다. 현재 코드는 고정 바인드 구조이므로, 필요 시 코드 자체를 수정해 `localhost` 또는 특정 IP로 바꿔 검증해야 한다.
 
 ### 추가 검토 메모
 - `2026-03-08` 추가 리뷰에서 지적된 과한 일반화 요소는 정리 완료.
 - 현재 구현은 정적 파일 서빙, 단일 JSON 브로드캐스트 경로, 기본 연결 종료 처리 정도만 남긴 최소 형태다.
 - 문자열 기반 handler 스크립트는 제거됐고, 편집기 자동완성이 가능한 top-level 함수 구조로 정리됐다.
 - 현재도 client receive loop는 runspace pool을 사용한다. 이 층까지 완전히 제거하려면 WebSocket 처리 구조를 더 크게 바꿔야 한다.
-- 같은 날 `server.ps1` 재검토 결과, 이전 대비 확실히 단순해졌지만 runspace `InitialSessionState` 함수 주입과 `Start-ClientHandler` 래퍼는 여전히 임시 단일 채팅 서버 기준으로는 다소 무거운 구조로 평가함.
-- `Get-ClientLabel`은 현재 IPv4 형식을 그대로 가정하고 `$parts[2]`, `$parts[3]`를 읽으므로 예상과 다른 주소 형식이 오면 오류 가능성이 있다. 스펙상 복잡한 검증은 불필요하지만, 최소 대체 문자열 처리와 비교하면 지금은 얇지만 거친 상태다.
-- `Invoke-ClientHandler`는 text가 아닌 프레임을 만났을 때 누적 버퍼를 비우지 않고 `continue`하므로 혼합 프레임 입력 시 이전 조각이 남을 수 있다. 현재 브라우저 JS만 유일한 요청자라는 전제에서는 실사용 영향은 낮다.
+- 같은 날 감사에서 지적된 "설정점은 줄이고, 연결 처리 유틸리티는 조금 늘리는" 방향은 반영 완료.

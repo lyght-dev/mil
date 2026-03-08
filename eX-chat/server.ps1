@@ -12,6 +12,15 @@ function Get-ContentType {
     }
 }
 
+function New-JsonBytes {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Payload
+    )
+
+    return [System.Text.Encoding]::UTF8.GetBytes(($Payload | ConvertTo-Json -Compress -Depth 4))
+}
+
 function Send-BytesResponse {
     param(
         [Parameter(Mandatory = $true)]
@@ -73,11 +82,12 @@ function Broadcast-Json {
         [object]$Payload
     )
 
-    $bytes = [System.Text.Encoding]::UTF8.GetBytes(($Payload | ConvertTo-Json -Compress -Depth 4))
+    $bytes = New-JsonBytes -Payload $Payload
     $segment = [System.ArraySegment[byte]]::new($bytes, 0, $bytes.Length)
 
     foreach ($client in @($State.Clients.ToArray())) {
         $socket = $client.Socket
+        $label = $client.Label
 
         if ($socket.State -ne [System.Net.WebSockets.WebSocketState]::Open) {
             [void]$State.Clients.Remove($client)
@@ -85,19 +95,49 @@ function Broadcast-Json {
         }
 
         try {
-            $socket.SendAsync(
-                $segment,
+            Write-Host ("Sending to {0}. SocketState={1}" -f $label, $socket.State)
+            [void]([System.Net.WebSockets.WebSocket]$socket).SendAsync(
+                ([System.ArraySegment[byte]]$segment),
                 [System.Net.WebSockets.WebSocketMessageType]::Text,
                 $true,
-                [Threading.CancellationToken]::None
+                [System.Threading.CancellationToken]::None
             ).GetAwaiter().GetResult()
+            Write-Host ("Sent to {0}. SocketState={1}" -f $label, $socket.State)
         } catch {
-            [void]$State.Clients.Remove($client)
-            try {
-                $socket.Dispose()
-            } catch {
+            Write-Host ("Send failed for {0}: {1}" -f $label, $_.Exception.Message)
+            if ($_.Exception.InnerException) {
+                Write-Host ("Inner: {0}" -f $_.Exception.InnerException.Message)
             }
+            [void]$State.Clients.Remove($client)
+            Close-ClientSocket -Socket $socket -Status "InternalServerError" -Description "send failed"
         }
+    }
+}
+
+function Close-ClientSocket {
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Net.WebSockets.WebSocket]$Socket,
+
+        [string]$Status = "NormalClosure",
+
+        [string]$Description = "bye"
+    )
+
+    try {
+        if ($Socket.State -eq [System.Net.WebSockets.WebSocketState]::Open -or $Socket.State -eq [System.Net.WebSockets.WebSocketState]::CloseReceived) {
+            [void]([System.Net.WebSockets.WebSocket]$Socket).CloseAsync(
+                [System.Net.WebSockets.WebSocketCloseStatus]::$Status,
+                $Description,
+                [System.Threading.CancellationToken]::None
+            ).GetAwaiter().GetResult()
+        }
+    } catch {
+    }
+
+    try {
+        $Socket.Dispose()
+    } catch {
     }
 }
 
@@ -115,11 +155,13 @@ function Invoke-ClientHandler {
 
     $buffer = New-Object byte[] 4096
     $builder = New-Object System.Text.StringBuilder
+    Write-Host ("Client handler start for {0}. SocketState={1}" -f $Label, $Socket.State)
 
     try {
         while ($Socket.State -eq [System.Net.WebSockets.WebSocketState]::Open) {
             $segment = [System.ArraySegment[byte]]::new($buffer, 0, $buffer.Length)
-            $result = $Socket.ReceiveAsync($segment, [Threading.CancellationToken]::None).GetAwaiter().GetResult()
+            $result = ([System.Net.WebSockets.WebSocket]$Socket).ReceiveAsync($segment, [System.Threading.CancellationToken]::None).GetAwaiter().GetResult()
+            Write-Host ("Receive for {0}: Type={1} Count={2} End={3} CloseStatus={4} CloseDesc={5}" -f $Label, $result.MessageType, $result.Count, $result.EndOfMessage, $result.CloseStatus, $result.CloseStatusDescription)
 
             if ($result.MessageType -eq [System.Net.WebSockets.WebSocketMessageType]::Close) {
                 break
@@ -148,7 +190,12 @@ function Invoke-ClientHandler {
             }
         }
     } catch {
+        Write-Host ("Client handler failed for {0}: {1}" -f $Label, $_.Exception.Message)
+        if ($_.Exception.InnerException) {
+            Write-Host ("Inner: {0}" -f $_.Exception.InnerException.Message)
+        }
     } finally {
+        Write-Host ("Client handler closing for {0}. SocketState={1}" -f $Label, $Socket.State)
         foreach ($client in @($State.Clients.ToArray())) {
             if ([object]::ReferenceEquals($client.Socket, $Socket)) {
                 [void]$State.Clients.Remove($client)
@@ -156,49 +203,72 @@ function Invoke-ClientHandler {
             }
         }
 
-        try {
-            if ($Socket.State -eq [System.Net.WebSockets.WebSocketState]::Open -or $Socket.State -eq [System.Net.WebSockets.WebSocketState]::CloseReceived) {
-                $Socket.CloseAsync(
-                    [System.Net.WebSockets.WebSocketCloseStatus]::NormalClosure,
-                    "bye",
-                    [Threading.CancellationToken]::None
-                ).GetAwaiter().GetResult()
-            }
-        } catch {
-        }
-
         Broadcast-Json -State $State -Payload @{
             type = "system"
             text = "$Label left"
         }
 
-        try {
-            $Socket.Dispose()
-        } catch {
-        }
+        Close-ClientSocket -Socket $Socket
     }
 }
 
-function Start-EXChat {
+function Start-ChatClient {
     param(
-        [int]$Port = 8888,
-        [string]$BindAddress = "+",
-        [string]$AppRoot = $PSScriptRoot
+        [Parameter(Mandatory = $true)]
+        [System.Net.HttpListenerContext]$Context,
+
+        [Parameter(Mandatory = $true)]
+        [System.Collections.Hashtable]$State,
+
+        [Parameter(Mandatory = $true)]
+        [System.Management.Automation.Runspaces.RunspacePool]$RunspacePool,
+
+        [Parameter(Mandatory = $true)]
+        [System.Management.Automation.AllowEmptyCollection()]
+        [System.Collections.ArrayList]$Handlers
     )
 
-    if ([string]::IsNullOrWhiteSpace($AppRoot)) {
-        $AppRoot = (Get-Location).Path
+    $subProtocol = [System.Management.Automation.Language.NullString]::Value
+    $wsContext = $Context.AcceptWebSocketAsync($subProtocol).GetAwaiter().GetResult()
+    $socket = $wsContext.WebSocket
+    $label = Get-ClientLabel -Address $Context.Request.RemoteEndPoint.Address
+    Write-Host ("Accepted client {0}. SocketState={1}" -f $label, $socket.State)
+
+    $client = [hashtable]::Synchronized(@{
+        Socket = $socket
+        Label = $label
+    })
+    [void]$State.Clients.Add($client)
+
+    Broadcast-Json -State $State -Payload @{
+        type = "system"
+        text = "$label joined"
+    }
+    Write-Host ("Joined broadcast handled for {0}. SocketState={1}" -f $label, $socket.State)
+
+    $ps = [powershell]::Create()
+    $ps.RunspacePool = $RunspacePool
+    $null = $ps.AddCommand("Invoke-ClientHandler").AddArgument($socket).AddArgument($label).AddArgument($state)
+    $null = $ps.BeginInvoke()
+    [void]$Handlers.Add($ps)
+}
+
+function Start-EXChat {
+    $appRoot = $PSScriptRoot
+    if ([string]::IsNullOrWhiteSpace($appRoot)) {
+        $appRoot = (Get-Location).Path
     }
 
-    $prefix = "http://{0}:{1}/" -f $BindAddress, $Port
     $listener = [System.Net.HttpListener]::new()
-    $listener.Prefixes.Add($prefix)
+    $listener.Prefixes.Add("http://+:8888/")
 
     $state = [hashtable]::Synchronized(@{
         Clients = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     })
 
     $iss = [System.Management.Automation.Runspaces.InitialSessionState]::CreateDefault()
+    $iss.Commands.Add((New-Object System.Management.Automation.Runspaces.SessionStateFunctionEntry "New-JsonBytes", (Get-Item function:New-JsonBytes).ScriptBlock.ToString()))
+    $iss.Commands.Add((New-Object System.Management.Automation.Runspaces.SessionStateFunctionEntry "Close-ClientSocket", (Get-Item function:Close-ClientSocket).ScriptBlock.ToString()))
     $iss.Commands.Add((New-Object System.Management.Automation.Runspaces.SessionStateFunctionEntry "Broadcast-Json", (Get-Item function:Broadcast-Json).ScriptBlock.ToString()))
     $iss.Commands.Add((New-Object System.Management.Automation.Runspaces.SessionStateFunctionEntry "Invoke-ClientHandler", (Get-Item function:Invoke-ClientHandler).ScriptBlock.ToString()))
 
@@ -208,7 +278,7 @@ function Start-EXChat {
 
     try {
         $listener.Start()
-        Write-Host ("eX-chat listening on {0}" -f $prefix)
+        Write-Host "eX-chat listening on http://+:8888/"
 
         while ($listener.IsListening) {
             $context = $listener.GetContext()
@@ -221,27 +291,12 @@ function Start-EXChat {
                 }
 
                 try {
-                    $wsContext = $context.AcceptWebSocketAsync($null).GetAwaiter().GetResult()
-                    $socket = $wsContext.WebSocket
-                    $label = Get-ClientLabel -Address $context.Request.RemoteEndPoint.Address
-
-                    $client = [hashtable]::Synchronized(@{
-                        Socket = $socket
-                        Label = $label
-                    })
-                    [void]$state.Clients.Add($client)
-
-                    Broadcast-Json -State $state -Payload @{
-                        type = "system"
-                        text = "$label joined"
-                    }
-
-                    $ps = [powershell]::Create()
-                    $ps.RunspacePool = $runspacePool
-                    $null = $ps.AddCommand("Invoke-ClientHandler").AddArgument($socket).AddArgument($label).AddArgument($state)
-                    $null = $ps.BeginInvoke()
-                    [void]$handlers.Add($ps)
+                    Start-ChatClient -Context $context -State $state -RunspacePool $runspacePool -Handlers $handlers
                 } catch {
+                    Write-Host ("WebSocket accept failed: {0}" -f $_.Exception.Message)
+                    if ($_.Exception.InnerException) {
+                        Write-Host ("Inner: {0}" -f $_.Exception.InnerException.Message)
+                    }
                     if ($context.Response.OutputStream.CanWrite) {
                         Send-TextResponse -Response $context.Response -Text "WebSocket accept failed" -StatusCode 500
                     }
@@ -263,7 +318,7 @@ function Start-EXChat {
                 continue
             }
 
-            $filePath = Join-Path $AppRoot $relativePath
+            $filePath = Join-Path $appRoot $relativePath
             if (-not (Test-Path -LiteralPath $filePath)) {
                 Send-TextResponse -Response $context.Response -Text "Missing file" -StatusCode 500
                 continue
@@ -286,21 +341,7 @@ function Start-EXChat {
         }
 
         foreach ($client in @($state.Clients.ToArray())) {
-            try {
-                if ($client.Socket.State -eq [System.Net.WebSockets.WebSocketState]::Open) {
-                    $client.Socket.CloseAsync(
-                        [System.Net.WebSockets.WebSocketCloseStatus]::NormalClosure,
-                        "shutdown",
-                        [Threading.CancellationToken]::None
-                    ).GetAwaiter().GetResult()
-                }
-            } catch {
-            }
-
-            try {
-                $client.Socket.Dispose()
-            } catch {
-            }
+            Close-ClientSocket -Socket $client.Socket -Description "shutdown"
         }
 
         if ($listener.IsListening) {
