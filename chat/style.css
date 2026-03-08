@@ -1,17 +1,15 @@
 :root {
   color-scheme: light;
-  --bg: #eef3f8;
+  --bg: #eef3ee;
   --panel: #ffffff;
-  --line: #d5deea;
-  --text: #172b4d;
-  --muted: #5e6c84;
-  --accent: #0052cc;
-  --ok-bg: #e3fcef;
-  --ok-text: #006644;
-  --warn-bg: #fffae6;
-  --warn-text: #974f0c;
-  --off-bg: #f4f5f7;
-  --off-text: #42526e;
+  --sheet: #fafcf9;
+  --line: #d9e2d8;
+  --line-strong: #c2d0c0;
+  --text: #1f2a1f;
+  --muted: #657365;
+  --accent: #217346;
+  --accent-deep: #1a5c38;
+  --header-fill: #f5f8f4;
 }
 
 * {
@@ -21,81 +19,48 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: linear-gradient(180deg, #f6f9fc 0%, var(--bg) 100%);
+  background: var(--bg);
   color: var(--text);
-  font: 14px/1.5 "Segoe UI", "Malgun Gothic", sans-serif;
+  font: 14px/1.5 "Aptos", "Segoe UI", "Malgun Gothic", sans-serif;
 }
 
 .app {
   width: min(920px, calc(100vw - 32px));
-  margin: 24px auto;
+  margin: 28px auto;
   background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  box-shadow: 0 18px 40px rgba(9, 30, 66, 0.08);
+  border: 1px solid var(--line-strong);
+  box-shadow: 0 6px 18px rgba(31, 42, 31, 0.06);
   overflow: hidden;
 }
 
 .topbar {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  align-items: center;
-  padding: 20px 24px;
-  border-bottom: 1px solid var(--line);
-  background: linear-gradient(135deg, #ffffff 0%, #f7faff 100%);
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--line-strong);
+  background: var(--header-fill);
 }
 
 h1 {
   margin: 0;
   font-size: 24px;
-}
-
-.sub {
-  margin: 4px 0 0;
-  color: var(--muted);
-}
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: lowercase;
-}
-
-.badge-ok {
-  background: var(--ok-bg);
-  color: var(--ok-text);
-}
-
-.badge-warn {
-  background: var(--warn-bg);
-  color: var(--warn-text);
-}
-
-.badge-off {
-  background: var(--off-bg);
-  color: var(--off-text);
+  line-height: 1.2;
 }
 
 .messages {
   height: min(70vh, 640px);
-  padding: 20px 24px;
+  padding: 0;
   overflow-y: auto;
   background:
-    radial-gradient(circle at top right, rgba(0, 82, 204, 0.06), transparent 28%),
-    linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px),
+    var(--sheet);
+  background-size: 100% 44px, 88px 100%, 100% 100%;
 }
 
 .msg {
-  margin-bottom: 14px;
-  padding: 12px 14px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: #fff;
+  margin-bottom: 0;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--line-strong);
+  background: #ffffff;
 }
 
 .meta {
@@ -103,6 +68,9 @@ h1 {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 6px;
+  padding: 0;
+  border-bottom: 0;
+  background: transparent;
 }
 
 .sender {
@@ -116,6 +84,8 @@ h1 {
 }
 
 .text {
+  min-height: 44px;
+  padding: 0;
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -125,8 +95,8 @@ h1 {
   grid-template-columns: 1fr auto;
   gap: 12px;
   padding: 18px 24px 24px;
-  border-top: 1px solid var(--line);
-  background: #fff;
+  border-top: 1px solid var(--line-strong);
+  background: var(--header-fill);
 }
 
 .composer input,
@@ -137,20 +107,19 @@ h1 {
 .composer input {
   min-width: 0;
   padding: 12px 14px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
+  border: 1px solid var(--line-strong);
+  background: #fff;
   outline: none;
 }
 
 .composer input:focus {
-  border-color: #4c9aff;
-  box-shadow: 0 0 0 3px rgba(76, 154, 255, 0.2);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(33, 115, 70, 0.12);
 }
 
 .composer button {
   padding: 12px 18px;
   border: 0;
-  border-radius: 10px;
   background: var(--accent);
   color: #fff;
   font-weight: 700;
@@ -158,19 +127,18 @@ h1 {
 }
 
 .composer button:disabled {
-  background: #7a869a;
+  background: #88a892;
   cursor: wait;
 }
 
 .composer button:hover:not(:disabled) {
-  background: #0747a6;
+  background: var(--accent-deep);
 }
 
 @media (max-width: 640px) {
   .app {
     width: calc(100vw - 20px);
     margin: 10px auto;
-    border-radius: 12px;
   }
 
   .topbar,
@@ -178,11 +146,6 @@ h1 {
   .composer {
     padding-left: 16px;
     padding-right: 16px;
-  }
-
-  .topbar {
-    flex-direction: column;
-    align-items: flex-start;
   }
 
   .composer {
