@@ -52,80 +52,12 @@ function Send-TextResponse {
 
 function Get-ClientLabel {
     param(
+        [Parameter(Mandatory = $true)]
         [System.Net.IPAddress]$Address
     )
 
-    if ($null -eq $Address) {
-        return "unknown"
-    }
-
-    if ($Address.IsIPv4MappedToIPv6) {
-        $Address = $Address.MapToIPv4()
-    }
-
-    if ($Address.AddressFamily -ne [System.Net.Sockets.AddressFamily]::InterNetwork) {
-        return "ipv6"
-    }
-
     $parts = $Address.ToString().Split(".")
-    if ($parts.Length -lt 4) {
-        return $Address.ToString()
-    }
-
     return "{0}.{1}" -f $parts[2], $parts[3]
-}
-
-function New-JsonBytes {
-    param(
-        [Parameter(Mandatory = $true)]
-        [object]$Payload
-    )
-
-    return [System.Text.Encoding]::UTF8.GetBytes(($Payload | ConvertTo-Json -Compress -Depth 4))
-}
-
-function Broadcast-Bytes {
-    param(
-        [Parameter(Mandatory = $true)]
-        [System.Collections.Hashtable]$State,
-
-        [Parameter(Mandatory = $true)]
-        [byte[]]$Bytes
-    )
-
-    $clients = @($State.Clients.ToArray())
-
-    foreach ($client in $clients) {
-        $socket = $client.Socket
-        $gate = $client.SendGate
-
-        if ($null -eq $socket -or $socket.State -ne [System.Net.WebSockets.WebSocketState]::Open) {
-            [void]$State.Clients.Remove($client)
-            continue
-        }
-
-        try {
-            $null = $gate.Wait()
-            $segment = [System.ArraySegment[byte]]::new($Bytes, 0, $Bytes.Length)
-            $socket.SendAsync($segment, [System.Net.WebSockets.WebSocketMessageType]::Text, $true, [Threading.CancellationToken]::None).GetAwaiter().GetResult()
-        } catch {
-            try {
-                if ($socket.State -eq [System.Net.WebSockets.WebSocketState]::Open) {
-                    $socket.CloseAsync(
-                        [System.Net.WebSockets.WebSocketCloseStatus]::InternalServerError,
-                        "send failed",
-                        [Threading.CancellationToken]::None
-                    ).GetAwaiter().GetResult()
-                }
-            } catch {
-            }
-            [void]$State.Clients.Remove($client)
-        } finally {
-            if ($gate.CurrentCount -eq 0) {
-                $null = $gate.Release()
-            }
-        }
-    }
 }
 
 function Broadcast-Json {
@@ -137,8 +69,109 @@ function Broadcast-Json {
         [object]$Payload
     )
 
-    $bytes = New-JsonBytes -Payload $Payload
-    Broadcast-Bytes -State $State -Bytes $bytes
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes(($Payload | ConvertTo-Json -Compress -Depth 4))
+    $segment = [System.ArraySegment[byte]]::new($bytes, 0, $bytes.Length)
+
+    foreach ($client in @($State.Clients.ToArray())) {
+        $socket = $client.Socket
+
+        if ($socket.State -ne [System.Net.WebSockets.WebSocketState]::Open) {
+            [void]$State.Clients.Remove($client)
+            continue
+        }
+
+        try {
+            $socket.SendAsync(
+                $segment,
+                [System.Net.WebSockets.WebSocketMessageType]::Text,
+                $true,
+                [Threading.CancellationToken]::None
+            ).GetAwaiter().GetResult()
+        } catch {
+            [void]$State.Clients.Remove($client)
+            try {
+                $socket.Dispose()
+            } catch {
+            }
+        }
+    }
+}
+
+function Invoke-ClientHandler {
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Net.WebSockets.WebSocket]$Socket,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Label,
+
+        [Parameter(Mandatory = $true)]
+        [System.Collections.Hashtable]$State
+    )
+
+    $buffer = New-Object byte[] 4096
+    $builder = New-Object System.Text.StringBuilder
+
+    try {
+        while ($Socket.State -eq [System.Net.WebSockets.WebSocketState]::Open) {
+            $segment = [System.ArraySegment[byte]]::new($buffer, 0, $buffer.Length)
+            $result = $Socket.ReceiveAsync($segment, [Threading.CancellationToken]::None).GetAwaiter().GetResult()
+
+            if ($result.MessageType -eq [System.Net.WebSockets.WebSocketMessageType]::Close) {
+                break
+            }
+
+            if ($result.MessageType -ne [System.Net.WebSockets.WebSocketMessageType]::Text) {
+                continue
+            }
+
+            if ($result.Count -gt 0) {
+                [void]$builder.Append([System.Text.Encoding]::UTF8.GetString($buffer, 0, $result.Count))
+            }
+
+            if (-not $result.EndOfMessage) {
+                continue
+            }
+
+            $text = $builder.ToString()
+            [void]$builder.Clear()
+
+            Broadcast-Json -State $State -Payload @{
+                type = "chat"
+                sender = $Label
+                text = $text
+            }
+        }
+    } catch {
+    } finally {
+        foreach ($client in @($State.Clients.ToArray())) {
+            if ([object]::ReferenceEquals($client.Socket, $Socket)) {
+                [void]$State.Clients.Remove($client)
+                break
+            }
+        }
+
+        try {
+            if ($Socket.State -eq [System.Net.WebSockets.WebSocketState]::Open -or $Socket.State -eq [System.Net.WebSockets.WebSocketState]::CloseReceived) {
+                $Socket.CloseAsync(
+                    [System.Net.WebSockets.WebSocketCloseStatus]::NormalClosure,
+                    "bye",
+                    [Threading.CancellationToken]::None
+                ).GetAwaiter().GetResult()
+            }
+        } catch {
+        }
+
+        Broadcast-Json -State $State -Payload @{
+            type = "system"
+            text = "$Label left"
+        }
+
+        try {
+            $Socket.Dispose()
+        } catch {
+        }
+    }
 }
 
 function Start-ClientHandler {
@@ -156,123 +189,9 @@ function Start-ClientHandler {
         [System.Management.Automation.Runspaces.RunspacePool]$RunspacePool
     )
 
-    $handler = {
-        param($Socket, $Label, $State)
-
-        function Send-BroadcastFromHandler {
-            param([object]$Payload)
-
-            $bytes = [System.Text.Encoding]::UTF8.GetBytes(($Payload | ConvertTo-Json -Compress -Depth 4))
-            $clients = @($State.Clients.ToArray())
-
-            foreach ($client in $clients) {
-                $clientSocket = $client.Socket
-                $gate = $client.SendGate
-
-                if ($null -eq $clientSocket -or $clientSocket.State -ne [System.Net.WebSockets.WebSocketState]::Open) {
-                    [void]$State.Clients.Remove($client)
-                    continue
-                }
-
-                try {
-                    $null = $gate.Wait()
-                    $segment = [System.ArraySegment[byte]]::new($bytes, 0, $bytes.Length)
-                    $clientSocket.SendAsync(
-                        $segment,
-                        [System.Net.WebSockets.WebSocketMessageType]::Text,
-                        $true,
-                        [Threading.CancellationToken]::None
-                    ).GetAwaiter().GetResult()
-                } catch {
-                    try {
-                        if ($clientSocket.State -eq [System.Net.WebSockets.WebSocketState]::Open) {
-                            $clientSocket.CloseAsync(
-                                [System.Net.WebSockets.WebSocketCloseStatus]::InternalServerError,
-                                "send failed",
-                                [Threading.CancellationToken]::None
-                            ).GetAwaiter().GetResult()
-                        }
-                    } catch {
-                    }
-                    [void]$State.Clients.Remove($client)
-                } finally {
-                    if ($gate.CurrentCount -eq 0) {
-                        $null = $gate.Release()
-                    }
-                }
-            }
-        }
-
-        $buffer = New-Object byte[] 4096
-        $builder = New-Object System.Text.StringBuilder
-
-        try {
-            while ($Socket.State -eq [System.Net.WebSockets.WebSocketState]::Open) {
-                $segment = [System.ArraySegment[byte]]::new($buffer, 0, $buffer.Length)
-                $result = $Socket.ReceiveAsync($segment, [Threading.CancellationToken]::None).GetAwaiter().GetResult()
-
-                if ($result.MessageType -eq [System.Net.WebSockets.WebSocketMessageType]::Close) {
-                    break
-                }
-
-                if ($result.Count -gt 0) {
-                    $null = $builder.Append([System.Text.Encoding]::UTF8.GetString($buffer, 0, $result.Count))
-                }
-
-                if (-not $result.EndOfMessage) {
-                    continue
-                }
-
-                if ($result.MessageType -eq [System.Net.WebSockets.WebSocketMessageType]::Text) {
-                    $text = $builder.ToString()
-                    $builder.Clear() | Out-Null
-
-                    Send-BroadcastFromHandler -Payload @{
-                        type = "chat"
-                        sender = $Label
-                        text = $text
-                    }
-                } else {
-                    $builder.Clear() | Out-Null
-                }
-            }
-        } catch {
-        } finally {
-            $client = $null
-            foreach ($item in @($State.Clients.ToArray())) {
-                if ([object]::ReferenceEquals($item.Socket, $Socket)) {
-                    $client = $item
-                    break
-                }
-            }
-
-            if ($null -ne $client) {
-                [void]$State.Clients.Remove($client)
-            }
-
-            try {
-                if ($Socket.State -eq [System.Net.WebSockets.WebSocketState]::Open -or $Socket.State -eq [System.Net.WebSockets.WebSocketState]::CloseReceived) {
-                    $Socket.CloseAsync(
-                        [System.Net.WebSockets.WebSocketCloseStatus]::NormalClosure,
-                        "bye",
-                        [Threading.CancellationToken]::None
-                    ).GetAwaiter().GetResult()
-                }
-            } catch {
-            }
-
-            Send-BroadcastFromHandler -Payload @{
-                type = "system"
-                text = "$Label left"
-            }
-
-            $Socket.Dispose()
-        }
-    }
-
     $ps = [powershell]::Create()
     $ps.RunspacePool = $RunspacePool
-    $null = $ps.AddScript($handler).AddArgument($Socket).AddArgument($Label).AddArgument($State)
+    $null = $ps.AddCommand("Invoke-ClientHandler").AddArgument($Socket).AddArgument($Label).AddArgument($State)
     $handle = $ps.BeginInvoke()
 
     return [pscustomobject]@{
@@ -300,7 +219,11 @@ function Start-EXChat {
         Clients = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     })
 
-    $runspacePool = [runspacefactory]::CreateRunspacePool(1, 16)
+    $iss = [System.Management.Automation.Runspaces.InitialSessionState]::CreateDefault()
+    $iss.Commands.Add((New-Object System.Management.Automation.Runspaces.SessionStateFunctionEntry "Broadcast-Json", (Get-Item function:Broadcast-Json).ScriptBlock.ToString()))
+    $iss.Commands.Add((New-Object System.Management.Automation.Runspaces.SessionStateFunctionEntry "Invoke-ClientHandler", (Get-Item function:Invoke-ClientHandler).ScriptBlock.ToString()))
+
+    $runspacePool = [runspacefactory]::CreateRunspacePool(1, 16, $iss, $Host)
     $runspacePool.Open()
     $handlers = New-Object System.Collections.ArrayList
 
@@ -326,7 +249,6 @@ function Start-EXChat {
                     $client = [hashtable]::Synchronized(@{
                         Socket = $socket
                         Label = $label
-                        SendGate = [System.Threading.SemaphoreSlim]::new(1, 1)
                     })
                     [void]$state.Clients.Add($client)
 
@@ -365,8 +287,7 @@ function Start-EXChat {
             }
 
             $bytes = [System.IO.File]::ReadAllBytes($filePath)
-            $contentType = Get-ContentType -Path $filePath
-            Send-BytesResponse -Response $context.Response -Bytes $bytes -ContentType $contentType
+            Send-BytesResponse -Response $context.Response -Bytes $bytes -ContentType (Get-ContentType -Path $filePath)
         }
     } finally {
         foreach ($handler in @($handlers)) {

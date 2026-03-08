@@ -5,7 +5,6 @@
   const inputEl = document.getElementById("chat-input");
 
   let socket = null;
-  let reconnectTimer = null;
 
   function endpoint() {
     const proto = location.protocol === "https:" ? "wss:" : "ws:";
@@ -68,21 +67,7 @@
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
-  function scheduleReconnect() {
-    if (reconnectTimer !== null) {
-      return;
-    }
-    reconnectTimer = window.setTimeout(function () {
-      reconnectTimer = null;
-      connect();
-    }, 2000);
-  }
-
   function connect() {
-    if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
-      return;
-    }
-
     setState("connecting", "connecting");
     socket = new WebSocket(endpoint());
 
@@ -91,17 +76,12 @@
     });
 
     socket.addEventListener("message", function (event) {
-      try {
-        const payload = JSON.parse(event.data);
-        addMessage(payload);
-      } catch (_error) {
-        addMessage({ type: "system", text: String(event.data || "") });
-      }
+      const payload = JSON.parse(event.data);
+      addMessage(payload);
     });
 
     socket.addEventListener("close", function () {
       setState("closed", "disconnected");
-      scheduleReconnect();
     });
 
     socket.addEventListener("error", function () {
