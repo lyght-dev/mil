@@ -183,7 +183,7 @@ function renderBoard(groups) {
     return;
   }
 
-  items.forEach(function (group) {
+  for (const group of items) {
     const location = group && group.location ? String(group.location) : "unknown";
     const ids = Array.isArray(group && group.ids) ? group.ids : [];
     const card = createElement("article", "board-card");
@@ -195,14 +195,14 @@ function renderBoard(groups) {
     if (ids.length === 0) {
       list.appendChild(createElement("li", "empty-item", "현재 인원 없음"));
     } else {
-      ids.forEach(function (id) {
+      for (const id of ids) {
         list.appendChild(createElement("li", "id-item", id));
-      });
+      }
     }
 
     card.appendChild(list);
     fragment.appendChild(card);
-  });
+  }
 
   root.replaceChildren(fragment);
 }
