@@ -3,8 +3,11 @@
 ## 2026-03-09
 
 ### 작업 요약
+- `acs/script.js`의 `handleSubmit()` 복잡도를 줄이기 위해 중복 처리/메시지/입력 정리 로직을 helper로 분리함.
+- `acs/script.js`의 비동기 흐름을 Promise chain 대신 `async`/`await` 중심으로 정리함.
 - `acs/script.js`의 DOM 접근을 전역 element 캐싱 대신 `$()` 조회 방식으로 정리함.
 - `acs/script.js`의 보드 렌더링에서 `innerHTML` 문자열 조합을 제거하고 DOM 생성 + `replaceChildren` 방식으로 변경함.
+- `acs/script.js`의 함수 내부 지역 변수명은 짧은 이름 위주로 다시 정리함.
 - `acs/board.html`, `acs/script.js`의 보드 상태 표시를 `정상`/`실패` 2개 상태로 단순화함.
   - 갱신 중에는 상태 문구를 바꾸지 않음
   - 조회 성공 시 `정상`

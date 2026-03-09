@@ -8,64 +8,63 @@ function $(id) {
 let boardTimerId = null;
 const recentScans = {};
 
-function fetchJson(url, options) {
-  return fetch(url, options).then(async function (response) {
-    const text = await response.text();
-    let payload = null;
+async function fetchJson(url, options) {
+  const response = await fetch(url, options);
+  const text = await response.text();
+  let payload = null;
 
-    if (text) {
-      try {
-        payload = JSON.parse(text);
-      } catch (error) {
-        payload = null;
-      }
+  if (text) {
+    try {
+      payload = JSON.parse(text);
+    } catch (error) {
+      payload = null;
     }
+  }
 
-    if (!response.ok) {
-      const message = payload && payload.message ? payload.message : "HTTP " + response.status;
-      const requestError = new Error(message);
-      requestError.status = response.status;
-      requestError.payload = payload;
-      throw requestError;
-    }
+  if (!response.ok) {
+    const message = payload && payload.message ? payload.message : "HTTP " + response.status;
+    const requestError = new Error(message);
+    requestError.status = response.status;
+    requestError.payload = payload;
+    throw requestError;
+  }
 
-    return payload;
-  });
+  return payload;
 }
 
 function showMessage(text, tone) {
-  const messageTextEl = $("message-text");
-  if (!messageTextEl) {
+  const el = $("message-text");
+  if (!el) {
     return;
   }
 
-  messageTextEl.textContent = text;
-  messageTextEl.className = "message-text";
+  el.textContent = text;
+  el.className = "message-text";
   if (tone) {
-    messageTextEl.classList.add("tone-" + tone);
+    el.classList.add("tone-" + tone);
   }
 }
 
 function focusBarcodeInput() {
-  const barcodeInputEl = $("barcode-input");
-  if (!barcodeInputEl) {
+  const input = $("barcode-input");
+  if (!input) {
     return;
   }
 
   window.setTimeout(function () {
-    const locationInputEl = $("location-input");
-    const nextBarcodeInputEl = $("barcode-input");
+    const location = $("location-input");
+    const next = $("barcode-input");
 
-    if (!nextBarcodeInputEl) {
+    if (!next) {
       return;
     }
 
-    if (document.activeElement === locationInputEl) {
+    if (document.activeElement === location) {
       return;
     }
 
-    nextBarcodeInputEl.focus();
-    nextBarcodeInputEl.select();
+    next.focus();
+    next.select();
   }, 0);
 }
 
@@ -125,33 +124,77 @@ function postAccess(payload) {
   });
 }
 
-function refreshScannerStatus(location) {
+async function refreshScannerStatus(location) {
   if (!location) {
-    return Promise.resolve([]);
+    return [];
   }
 
-  return fetchStatus(location).then(function (payload) {
-    return Array.isArray(payload && payload.ids) ? payload.ids.slice() : [];
-  });
+  const payload = await fetchStatus(location);
+  return Array.isArray(payload && payload.ids) ? payload.ids.slice() : [];
 }
 
 function createElement(tagName, className, text) {
-  const element = document.createElement(tagName);
+  const el = document.createElement(tagName);
 
   if (className) {
-    element.className = className;
+    el.className = className;
   }
 
   if (typeof text !== "undefined") {
-    element.textContent = text;
+    el.textContent = text;
   }
 
-  return element;
+  return el;
+}
+
+function clearInput(input) {
+  if (input) {
+    input.value = "";
+  }
+}
+
+function resetInput(input) {
+  clearInput(input);
+  focusBarcodeInput();
+}
+
+function showDuplicateResult(parsed) {
+  const action = parsed.type === "entry" ? "입영" : "퇴영";
+  showMessage(`${parsed.id}님 이미 ${action} 처리되었습니다`, "warn");
+}
+
+function showAccessResult(parsed) {
+  const action = parsed.type === "entry" ? "입영" : "퇴영";
+  showMessage(`${parsed.id}님 ${action}입니다`, "ok");
+}
+
+function handleDuplicateSubmit(parsed, location, alreadyEntered, input) {
+  if (shouldIgnoreDuplicate(location, parsed.raw)) {
+    showDuplicateResult(parsed);
+    resetInput(input);
+    return true;
+  }
+
+  if (parsed.type === "entry" && alreadyEntered) {
+    markRecentScan(location, parsed.raw);
+    showDuplicateResult(parsed);
+    resetInput(input);
+    return true;
+  }
+
+  if (parsed.type === "exit" && !alreadyEntered) {
+    markRecentScan(location, parsed.raw);
+    showDuplicateResult(parsed);
+    resetInput(input);
+    return true;
+  }
+
+  return false;
 }
 
 function renderBoard(groups) {
-  const boardGroupsEl = $("board-groups");
-  if (!boardGroupsEl) {
+  const root = $("board-groups");
+  if (!root) {
     return;
   }
 
@@ -159,67 +202,68 @@ function renderBoard(groups) {
   const fragment = document.createDocumentFragment();
 
   if (items.length === 0) {
-    const cardEl = createElement("article", "board-card empty-card");
-    cardEl.appendChild(createElement("h2", "", "현황 없음"));
-    cardEl.appendChild(createElement("p", "", "아직 데이터가 없습니다."));
-    fragment.appendChild(cardEl);
-    boardGroupsEl.replaceChildren(fragment);
+    const card = createElement("article", "board-card empty-card");
+    card.appendChild(createElement("h2", "", "현황 없음"));
+    card.appendChild(createElement("p", "", "아직 데이터가 없습니다."));
+    fragment.appendChild(card);
+    root.replaceChildren(fragment);
     return;
   }
 
   items.forEach(function (group) {
     const location = group && group.location ? String(group.location) : "unknown";
     const ids = Array.isArray(group && group.ids) ? group.ids : [];
-    const cardEl = createElement("article", "board-card");
-    const listEl = createElement("ul", "id-list");
+    const card = createElement("article", "board-card");
+    const list = createElement("ul", "id-list");
 
-    cardEl.appendChild(createElement("h2", "", location));
-    cardEl.appendChild(createElement("div", "board-count", "인원 " + ids.length + "명"));
+    card.appendChild(createElement("h2", "", location));
+    card.appendChild(createElement("div", "board-count", "인원 " + ids.length + "명"));
 
     if (ids.length === 0) {
-      listEl.appendChild(createElement("li", "empty-item", "현재 인원 없음"));
+      list.appendChild(createElement("li", "empty-item", "현재 인원 없음"));
     } else {
       ids.forEach(function (id) {
-        listEl.appendChild(createElement("li", "id-item", id));
+        list.appendChild(createElement("li", "id-item", id));
       });
     }
 
-    cardEl.appendChild(listEl);
-    fragment.appendChild(cardEl);
+    card.appendChild(list);
+    fragment.appendChild(card);
   });
 
-  boardGroupsEl.replaceChildren(fragment);
+  root.replaceChildren(fragment);
 }
 
-function refreshBoard() {
-  const boardGroupsEl = $("board-groups");
-  if (!boardGroupsEl) {
-    return Promise.resolve();
+async function refreshBoard() {
+  const root = $("board-groups");
+  if (!root) {
+    return;
   }
 
-  return fetchAllStatus().then(function (payload) {
-    const boardStatusEl = $("board-status");
-    const boardUpdatedEl = $("board-updated");
+  try {
+    const payload = await fetchAllStatus();
+    const status = $("board-status");
+    const updated = $("board-updated");
 
     renderBoard(payload);
-    if (boardStatusEl) {
-      boardStatusEl.textContent = "정상";
+    if (status) {
+      status.textContent = "정상";
     }
-    if (boardUpdatedEl) {
-      boardUpdatedEl.textContent = new Date().toLocaleString();
+    if (updated) {
+      updated.textContent = new Date().toLocaleString();
     }
-  }).catch(function () {
-    const boardStatusEl = $("board-status");
+  } catch (error) {
+    const status = $("board-status");
 
-    if (boardStatusEl) {
-      boardStatusEl.textContent = "실패";
+    if (status) {
+      status.textContent = "실패";
     }
-  });
+  }
 }
 
 function startBoardPolling() {
-  const boardGroupsEl = $("board-groups");
-  if (!boardGroupsEl) {
+  const root = $("board-groups");
+  if (!root) {
     return;
   }
 
@@ -232,13 +276,13 @@ function startBoardPolling() {
   }, BOARD_POLL_MS);
 }
 
-function handleSubmit(event) {
+async function handleSubmit(event) {
   event.preventDefault();
 
-  const locationInputEl = $("location-input");
-  const barcodeInputEl = $("barcode-input");
-  const location = locationInputEl ? locationInputEl.value.trim() : "";
-  const parsed = parseBarcode(barcodeInputEl ? barcodeInputEl.value : "");
+  const loc = $("location-input");
+  const input = $("barcode-input");
+  const location = loc ? loc.value.trim() : "";
+  const parsed = parseBarcode(input ? input.value : "");
 
   if (!location) {
     showMessage("location을 입력해 주세요.", "error");
@@ -248,120 +292,80 @@ function handleSubmit(event) {
 
   if (!parsed.ok) {
     showMessage(parsed.message, "error");
-    if (barcodeInputEl) {
-      barcodeInputEl.value = "";
-    }
-    focusBarcodeInput();
+    resetInput(input);
     return;
   }
 
-  refreshScannerStatus(location).then(function (ids) {
-    const alreadyEntered = ids.indexOf(parsed.id) >= 0;
+  let ids;
 
-    if (shouldIgnoreDuplicate(location, parsed.raw)) {
-      if (parsed.type === "entry") {
-        showMessage(parsed.id + "님 이미 입영 처리되었습니다", "warn");
-      } else {
-        showMessage(parsed.id + "님 이미 퇴영 처리되었습니다", "warn");
-      }
+  try {
+    ids = await refreshScannerStatus(location);
+  } catch (error) {
+    showMessage(error.message || "상태 조회에 실패했습니다.", "error");
+    resetInput(input);
+    return;
+  }
 
-      if (barcodeInputEl) {
-        barcodeInputEl.value = "";
-      }
-      focusBarcodeInput();
-      return;
-    }
+  if (handleDuplicateSubmit(parsed, location, ids.includes(parsed.id), input)) {
+    return;
+  }
 
-    if (parsed.type === "entry" && alreadyEntered) {
-      markRecentScan(location, parsed.raw);
-      showMessage(parsed.id + "님 이미 입영 처리되었습니다", "warn");
-      if (barcodeInputEl) {
-        barcodeInputEl.value = "";
-      }
-      focusBarcodeInput();
-      return;
-    }
-
-    if (parsed.type === "exit" && !alreadyEntered) {
-      markRecentScan(location, parsed.raw);
-      showMessage(parsed.id + "님 이미 퇴영 처리되었습니다", "warn");
-      if (barcodeInputEl) {
-        barcodeInputEl.value = "";
-      }
-      focusBarcodeInput();
-      return;
-    }
-
-    return postAccess({
+  try {
+    await postAccess({
       type: parsed.type,
       id: parsed.id,
       location: location
-    }).then(function () {
-      markRecentScan(location, parsed.raw);
-      if (parsed.type === "entry") {
-        showMessage(parsed.id + "님 입영입니다", "ok");
-      } else {
-        showMessage(parsed.id + "님 퇴영입니다", "ok");
-      }
-
-      if (barcodeInputEl) {
-        barcodeInputEl.value = "";
-      }
-
-      return refreshScannerStatus(location);
-    }).catch(function (error) {
-      showMessage(error.message || "처리에 실패했습니다.", "error");
-      if (barcodeInputEl) {
-        barcodeInputEl.value = "";
-      }
-    }).finally(function () {
-      focusBarcodeInput();
     });
-  }).catch(function (error) {
-    showMessage(error.message || "상태 조회에 실패했습니다.", "error");
-    if (barcodeInputEl) {
-      barcodeInputEl.value = "";
-    }
+
+    markRecentScan(location, parsed.raw);
+    showAccessResult(parsed);
+    clearInput(input);
+
+    await refreshScannerStatus(location);
+  } catch (error) {
+    showMessage(error.message || "처리에 실패했습니다.", "error");
+    clearInput(input);
+  } finally {
     focusBarcodeInput();
-  });
+  }
 }
 
 function initScannerPage() {
-  const scanFormEl = $("scan-form");
-  const barcodeInputEl = $("barcode-input");
+  const form = $("scan-form");
+  const input = $("barcode-input");
 
-  if (!scanFormEl || !barcodeInputEl) {
+  if (!form || !input) {
     return;
   }
 
-  scanFormEl.addEventListener("submit", handleSubmit);
+  form.addEventListener("submit", handleSubmit);
 
-  barcodeInputEl.addEventListener("keydown", function (event) {
+  input.addEventListener("keydown", function (event) {
     if (event.key !== "Enter") {
       return;
     }
 
     event.preventDefault();
-    scanFormEl.requestSubmit();
+    form.requestSubmit();
   });
 
-  barcodeInputEl.addEventListener("input", function () {
-    if (!barcodeInputEl.value.includes("\n") && !barcodeInputEl.value.includes("\r")) {
+  input.addEventListener("input", function () {
+    if (!input.value.includes("\n") && !input.value.includes("\r")) {
       return;
     }
 
-    barcodeInputEl.value = barcodeInputEl.value.replace(/[\r\n]+/g, "");
-    scanFormEl.requestSubmit();
+    input.value = input.value.replace(/[\r\n]+/g, "");
+    form.requestSubmit();
   });
 
-  barcodeInputEl.addEventListener("blur", function () {
+  input.addEventListener("blur", function () {
     focusBarcodeInput();
   });
 
   document.addEventListener("click", function (event) {
-    const locationInputEl = $("location-input");
+    const location = $("location-input");
 
-    if (event.target === locationInputEl) {
+    if (event.target === location) {
       return;
     }
 
@@ -372,15 +376,15 @@ function initScannerPage() {
 }
 
 function initBoardPage() {
-  const boardGroupsEl = $("board-groups");
-  const refreshBoardButtonEl = $("refresh-board-button");
+  const root = $("board-groups");
+  const button = $("refresh-board-button");
 
-  if (!boardGroupsEl) {
+  if (!root) {
     return;
   }
 
-  if (refreshBoardButtonEl) {
-    refreshBoardButtonEl.addEventListener("click", function () {
+  if (button) {
+    button.addEventListener("click", function () {
       void refreshBoard();
     });
   }
