@@ -108,7 +108,7 @@ function Get-StringField {
     return [string]$property.Value
 }
 
-function Write-Tuple {
+function Add-AccessRecord {
     param(
         [Parameter(Mandatory = $true)]
         [string]$LogPath,
@@ -139,7 +139,7 @@ function Write-Tuple {
     [System.IO.File]::AppendAllText($LogPath, $line + [Environment]::NewLine, $encoding)
 }
 
-function Update-Current-Status {
+function Set-CurrentStatus {
     param(
         [Parameter(Mandatory = $true)]
         [hashtable]$State,
@@ -174,7 +174,7 @@ function Update-Current-Status {
     }
 }
 
-function Get-Current-Status {
+function Get-CurrentStatus {
     param(
         [Parameter(Mandatory = $true)]
         [hashtable]$State,
@@ -199,7 +199,7 @@ function Get-Current-Status {
     }
 }
 
-function Get-All-Current-Status {
+function Get-AllCurrentStatus {
     param(
         [Parameter(Mandatory = $true)]
         [hashtable]$State
@@ -222,7 +222,7 @@ function Get-All-Current-Status {
     }
 }
 
-function Restore-Current-Status {
+function Import-CurrentStatus {
     param(
         [Parameter(Mandatory = $true)]
         [hashtable]$State,
@@ -241,11 +241,11 @@ function Restore-Current-Status {
             continue
         }
 
-        Update-Current-Status -State $State -Type ([string]$row.type) -Location ([string]$row.location) -Id ([string]$row.id)
+        Set-CurrentStatus -State $State -Type ([string]$row.type) -Location ([string]$row.location) -Id ([string]$row.id)
     }
 }
 
-function Route-Static-Resource {
+function Invoke-StaticResourceRoute {
     param(
         [Parameter(Mandatory = $true)]
         [System.Net.HttpListenerContext]$Context,
@@ -287,7 +287,7 @@ function Route-Static-Resource {
     return $true
 }
 
-function Route-API {
+function Invoke-ApiRoute {
     param(
         [Parameter(Mandatory = $true)]
         [System.Net.HttpListenerContext]$Context,
@@ -307,11 +307,11 @@ function Route-API {
     if ($method -eq "GET" -and $path -eq "/status") {
         $location = [string]$request.QueryString["location"]
         if ([string]::IsNullOrWhiteSpace($location)) {
-            Send-JsonResponse -Response $response -Payload (Get-All-Current-Status -State $State) -AsArray
+            Send-JsonResponse -Response $response -Payload (Get-AllCurrentStatus -State $State) -AsArray
             return $true
         }
 
-        Send-JsonResponse -Response $response -Payload (Get-Current-Status -State $State -Location $location)
+        Send-JsonResponse -Response $response -Payload (Get-CurrentStatus -State $State -Location $location)
         return $true
     }
 
@@ -350,8 +350,8 @@ function Route-API {
         }
 
         try {
-            Write-Tuple -LogPath $LogPath -Type $type -Location $location -Id $id
-            Update-Current-Status -State $State -Type $type -Location $location -Id $id
+            Add-AccessRecord -LogPath $LogPath -Type $type -Location $location -Id $id
+            Set-CurrentStatus -State $State -Type $type -Location $location -Id $id
         } catch {
             Send-JsonResponse -Response $response -Payload @{
                 status = "rejected"
@@ -369,7 +369,7 @@ function Route-API {
     return $false
 }
 
-function Main {
+function Start-AcsServer {
     $appRoot = if ([string]::IsNullOrWhiteSpace($PSScriptRoot)) { (Get-Location).Path } else { $PSScriptRoot }
     $logPath = Join-Path $appRoot "logs/access-log.csv"
 
@@ -378,7 +378,7 @@ function Main {
         Lock = [System.Object]::new()
     }
 
-    Restore-Current-Status -State $state -LogPath $logPath
+    Import-CurrentStatus -State $state -LogPath $logPath
 
     $listener = [System.Net.HttpListener]::new()
     $prefix = "http://+:8888/"
@@ -396,11 +396,11 @@ function Main {
             $response = $context.Response
 
             try {
-                if (Route-Static-Resource -Context $context -AppRoot $appRoot) {
+                if (Invoke-StaticResourceRoute -Context $context -AppRoot $appRoot) {
                     continue
                 }
 
-                if (Route-API -Context $context -State $state -LogPath $logPath) {
+                if (Invoke-ApiRoute -Context $context -State $state -LogPath $logPath) {
                     continue
                 }
 
@@ -423,4 +423,4 @@ function Main {
     }
 }
 
-Main
+Start-AcsServer

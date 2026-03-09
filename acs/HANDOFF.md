@@ -5,14 +5,14 @@
 ### 작업 요약
 - `acs/server.ps1`, `acs/index.html`, `acs/board.html`, `acs/script.js`, `acs/style.css`를 신규 구현함.
 - `server.ps1`를 함수 분리 구조로 작성함:
-  - `Main`
-  - `Route-Static-Resource`
-  - `Route-API`
-  - `Write-Tuple`
-  - `Update-Current-Status`
-  - `Get-Current-Status`
-  - `Get-All-Current-Status`
-  - `Restore-Current-Status`
+  - `Start-AcsServer`
+  - `Invoke-StaticResourceRoute`
+  - `Invoke-ApiRoute`
+  - `Add-AccessRecord`
+  - `Set-CurrentStatus`
+  - `Get-CurrentStatus`
+  - `Get-AllCurrentStatus`
+  - `Import-CurrentStatus`
 - 중앙 서버가 정적 파일 서빙, `POST /access`, `GET /status`, `GET /status?location=...`를 제공하도록 구현함.
 - 로그를 `logs/access-log.csv`에 `time,type,location,id` 형식으로 append 저장하도록 구현함.
 - 서버 시작 시 기존 CSV를 읽어 현재 상태 메모리를 복원하도록 구현함.
