@@ -57,7 +57,7 @@ body {
   flex-wrap: wrap;
 }
 
-.link-button {
+.btn-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -73,7 +73,7 @@ body {
   box-shadow: none;
 }
 
-.primary-button {
+.btn-pri {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -88,21 +88,21 @@ body {
   cursor: pointer;
 }
 
-.primary-button:disabled {
+.btn-pri:disabled {
   background: #8fa4c5;
   cursor: default;
 }
 
-.topbar .link-button {
+.topbar .btn-link {
   border-color: rgba(255, 255, 255, 0.28);
   background: transparent;
   box-shadow: none;
 }
 
 .panel,
-.board-meta,
-.board-card,
-.log-table-shell {
+.bd-meta,
+.bd-card,
+.log-box {
   border: 1px solid var(--line);
   border-radius: 14px;
   background: var(--panel);
@@ -118,12 +118,12 @@ body {
   gap: 16px;
 }
 
-.location-select-panel {
+.loc-pnl {
   display: grid;
   gap: 16px;
 }
 
-.location-dialog {
+.loc-dlg {
   width: min(100%, 420px);
   padding: 0;
   border: 1px solid var(--line);
@@ -132,33 +132,33 @@ body {
   box-shadow: var(--shadow);
 }
 
-.location-dialog::backdrop {
+.loc-dlg::backdrop {
   background: rgba(16, 35, 63, 0.32);
 }
 
-.location-dialog-form {
+.loc-form {
   display: grid;
   gap: 18px;
   padding: 24px;
 }
 
-.location-dialog-form h2 {
+.loc-form h2 {
   margin: 0;
   font-size: 24px;
 }
 
-.location-dialog-actions {
+.loc-act {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
 }
 
-.location-dialog-actions .link-button {
+.loc-act .btn-link {
   background: #f2f6fc;
   color: var(--accent-strong);
 }
 
-.selected-location {
+.sel-loc {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -169,12 +169,12 @@ body {
   background: #f7faff;
 }
 
-.selected-location-label {
+.sel-loc-label {
   color: var(--soft);
   font-weight: 600;
 }
 
-.selected-location strong {
+.sel-loc strong {
   font-size: 22px;
 }
 
@@ -217,7 +217,7 @@ body {
   border-color: var(--accent);
 }
 
-.message-panel {
+.msg-pnl {
   margin-top: 24px;
   padding: 16px;
   border-radius: 10px;
@@ -225,12 +225,12 @@ body {
   border: 1px solid var(--line);
 }
 
-.message-label {
+.msg-label {
   font-size: 14px;
   color: var(--soft);
 }
 
-.message-text {
+.msg-txt {
   margin-top: 10px;
   min-height: 72px;
   font-size: 30px;
@@ -251,7 +251,7 @@ body {
   color: var(--error);
 }
 
-.board-meta {
+.bd-meta {
   display: flex;
   gap: 24px;
   padding: 14px 16px;
@@ -259,13 +259,13 @@ body {
   background: rgba(255, 255, 255, 0.96);
 }
 
-.board-groups {
+.bd-grid {
   display: grid;
   gap: 16px;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
-.board-switch {
+.view-sw {
   display: inline-flex;
   gap: 8px;
   margin-bottom: 18px;
@@ -276,7 +276,7 @@ body {
   box-shadow: var(--shadow);
 }
 
-.switch-button {
+.sw-btn {
   min-height: 42px;
   padding: 0 16px;
   border: 0;
@@ -287,26 +287,26 @@ body {
   cursor: pointer;
 }
 
-.switch-button.is-active {
+.sw-btn.is-active {
   background: var(--accent);
   color: #fff;
 }
 
-.board-view[hidden] {
+.view-pane[hidden] {
   display: none;
 }
 
-.board-card {
+.bd-card {
   padding: 16px;
   background: rgba(255, 255, 255, 0.98);
 }
 
-.board-card h2 {
+.bd-card h2 {
   margin: 0 0 8px;
   font-size: 24px;
 }
 
-.board-count {
+.bd-count {
   margin-bottom: 12px;
   color: var(--soft);
 }
@@ -327,45 +327,45 @@ body {
   background: rgba(255, 255, 255, 0.72);
 }
 
-.log-controls {
+.log-ctrl {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
   margin-bottom: 16px;
 }
 
-.log-field {
+.log-fld {
   font-size: 15px;
 }
 
-.log-table-shell {
+.log-box {
   padding: 12px;
   background: rgba(255, 255, 255, 0.98);
 }
 
-.log-table-wrap {
+.tbl-wrap {
   overflow-x: auto;
 }
 
-.log-table {
+.tbl-log {
   width: 100%;
   border-collapse: collapse;
 }
 
-.log-table th,
-.log-table td {
+.tbl-log th,
+.tbl-log td {
   padding: 14px 12px;
   border-bottom: 1px solid var(--line);
   text-align: left;
   white-space: nowrap;
 }
 
-.log-table th {
+.tbl-log th {
   font-size: 15px;
   color: var(--soft);
 }
 
-.log-table td {
+.tbl-log td {
   font-size: 17px;
 }
 
@@ -380,7 +380,7 @@ body {
   }
 
   .topbar,
-  .board-meta {
+  .bd-meta {
     flex-direction: column;
     align-items: flex-start;
   }
@@ -393,19 +393,19 @@ body {
     font-size: 24px;
   }
 
-  .message-text {
+  .msg-txt {
     font-size: 24px;
   }
 
-  .board-switch {
+  .view-sw {
     width: 100%;
   }
 
-  .switch-button {
+  .sw-btn {
     flex: 1 1 0;
   }
 
-  .log-controls {
+  .log-ctrl {
     grid-template-columns: 1fr;
   }
 
@@ -417,7 +417,7 @@ body {
     font-size: 18px;
   }
 
-  .selected-location {
+  .sel-loc {
     flex-direction: column;
     align-items: flex-start;
   }

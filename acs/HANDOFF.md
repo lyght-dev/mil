@@ -3,6 +3,31 @@
 ## 2026-03-11
 
 ### 작업 요약
+- `acs/server.ps1`에 `GET /members`를 추가해 `list.json`의 `id,name,unit` 명단을 FE로 그대로 반환하도록 확장함.
+- `acs/board.html`, `acs/script.js`를 수정해 현황판 카드에 이름을 함께 표시하고, 로그 표에 이름 컬럼과 이름 검색을 추가함.
+- `acs/server.ps1`의 `POST /access` 성공 응답에 `name`을 추가함.
+  - 응답 형식이 `{status:"logged",id:"...",name:"..."}`가 되도록 확장함
+- `acs/script.js`의 스캐너 성공 메시지가 서버 응답의 `name`을 우선 사용하도록 조정함.
+  - 예: `김일병님 퇴영입니다`
+- 스캐너 화면에 임시로 붙였던 별도 군번/이름 확인 패널은 제거함.
+- `acs/index.html`, `acs/board.html`, `acs/script.js`, `acs/style.css`의 셀렉터를 `loc-*`, `msg-*`, `bd-*`, `log-*` 축약형으로 정리함.
+- `acs/SPEC.md`를 현재 계약에 맞게 보정함.
+  - `GET /members` API와 FE 명단 조회 흐름을 문서화함
+  - 현재 상태 규칙을 실제 구현 기준(`entry`만 현재 상태에 남김)으로 정리함
+
+### 다음 세션 인계 포인트
+- `list.json`은 이제 허용 군번 검증과 FE 명단 조회의 공용 소스다.
+- `GET /members`는 서버 시작 시 읽은 명단 배열을 그대로 반환한다.
+- 현황판 로그 검색은 군번, 이름, 위치를 기준으로 수행한다.
+- 스캐너 성공 메시지용 이름은 `POST /access` 응답의 `name`에서 받는다.
+- 스캐너 페이지에는 더 이상 별도 명단 조회 패널이 없다.
+- 서버 재시작 전에는 기존 응답 형식이 남아 있을 수 있으므로, 반영 확인 시 `acs/server.ps1` 재시작이 필요하다.
+
+### 검증 내역
+- `node --check /workspaces/mil/acs/script.js`
+- `pwsh -NoLogo -NoProfile -Command "[void][scriptblock]::Create((Get-Content -LiteralPath '/workspaces/mil/acs/server.ps1' -Raw)); 'PARSE_OK'"`
+
+### 작업 요약
 - `acs/board.html`, `acs/script.js`에서 현황판 기본 진입 뷰를 `현황 보기`에서 `로그 보기`로 변경함.
   - 초기 활성 전환 버튼을 `로그 보기`로 바꿈
   - 초기 hidden 상태를 로그 테이블 기준으로 맞춤
@@ -46,7 +71,7 @@
 
 ### 다음 세션 인계 포인트
 - 현재 스캐너 진입 UX는 `dialog` + `select` 기반 모달이다.
-- location 선택 실패나 취소 시 `location-select-panel`은 남아 있고, `위치 선택` 버튼으로 모달을 다시 열 수 있다.
+- location 선택 실패나 취소 시 위치 선택 패널은 남아 있고, `위치 선택` 버튼으로 모달을 다시 열 수 있다.
 - location 후보는 항상 `GET /locations` 응답으로 `select`에 다시 채운다.
 
 ### 검증 내역
@@ -273,7 +298,7 @@
 - 사용자 피드백 반영: 랜덤 발급안을 폐기하고, 군번 기반 결정론적 변환안으로 문서를 전면 수정함.
 - 추가 반영: 군번 패킹(Mixed-radix), Base32/Base62 인코딩, 선택적 키 기반 난독화(XOR mask) 방식과 예시를 문서화함.
 - `acs/ACS.ps1` 구현 추가: 함수 분리 + `Main` 엔트리 구조로 1단계 로컬 처리 흐름을 코드화함.
-- `acs/list.json` 샘플 데이터 추가: `a25-76046946`, `a01-123456` 기준 장병 목록 구성.
+- `acs/list.json` 샘플 데이터 추가: `a25-76000001`, `a01-123456` 기준 장병 목록 구성.
 - 짧은 꼬리번호 군번도 처리 가능하도록 `Unpack-Id`가 tail 선행 0을 제거하도록 조정함.
 
 ### 산출물

@@ -12,48 +12,48 @@
       <div>
         <h1>7136부대 위치 정보 관리 시스템</h1>
       </div>
-      <a class="link-button" href="/board.html">현황판 보기</a>
+      <a class="btn-link" href="/board.html">현황판 보기</a>
     </header>
 
     <section class="panel">
-      <section id="location-select-panel" class="location-select-panel">
+      <section id="loc-pnl" class="loc-pnl">
         <p>스캐너에 들어가기 전에 위치를 선택해 주세요.</p>
-        <button id="choose-location-button" class="primary-button" type="button">위치 선택</button>
+        <button id="loc-btn" class="btn-pri" type="button">위치 선택</button>
       </section>
 
-      <dialog id="location-dialog" class="location-dialog">
-        <form id="location-dialog-form" class="location-dialog-form" method="dialog">
+      <dialog id="loc-dlg" class="loc-dlg">
+        <form id="loc-form" class="loc-form" method="dialog">
           <h2>스캐너 위치 선택</h2>
-          <label class="field" for="location-select">
+          <label class="field" for="loc-select">
             <span>위치</span>
-            <select id="location-select">
+            <select id="loc-select">
               <option value="">위치를 선택해 주세요</option>
             </select>
           </label>
-          <div class="location-dialog-actions">
-            <button id="cancel-location-button" class="link-button" type="button">취소</button>
-            <button id="select-location-button" class="primary-button" type="submit">선택 완료</button>
+          <div class="loc-act">
+            <button id="loc-cancel" class="btn-link" type="button">취소</button>
+            <button id="loc-ok" class="btn-pri" type="submit">선택 완료</button>
           </div>
         </form>
       </dialog>
 
-      <section id="scanner-panel" hidden>
-        <div class="selected-location">
-          <span class="selected-location-label">선택 위치</span>
-          <strong id="selected-location-text">-</strong>
+      <section id="scan-pnl" hidden>
+        <div class="sel-loc">
+          <span class="sel-loc-label">선택 위치</span>
+          <strong id="sel-loc-txt">-</strong>
         </div>
 
         <form id="scan-form" class="scan-form">
           <label class="field">
             <span>바코드</span>
-            <input id="barcode-input" type="text" autocomplete="off" placeholder="ENa25-76046946">
+            <input id="barcode" type="text" autocomplete="off" placeholder="ENa25-76000001">
           </label>
         </form>
       </section>
 
-      <section class="message-panel" aria-live="polite">
-        <div class="message-label">처리 결과</div>
-        <div id="message-text" class="message-text">위치를 선택해 주세요.</div>
+      <section class="msg-pnl" aria-live="polite">
+        <div class="msg-label">처리 결과</div>
+        <div id="msg-txt" class="msg-txt">위치를 선택해 주세요.</div>
       </section>
     </section>
   </main>

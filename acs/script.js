@@ -10,6 +10,9 @@ let boardLogs = [];
 let scannerLocation = "";
 let configuredLocations = [];
 let configuredLocationSet = new Set();
+let allowedMembers = [];
+let allowedMemberById = new Map();
+let membersLoadPromise = null;
 const recentScans = {};
 
 const fetchJson = async (url, options) => {
@@ -36,11 +39,11 @@ const fetchJson = async (url, options) => {
 };
 
 const showMessage = (text, tone) => {
-  const el = $("message-text");
+  const el = $("msg-txt");
   if (!el) return;
 
   el.textContent = text;
-  el.className = "message-text";
+  el.className = "msg-txt";
   if (tone) el.classList.add(`tone-${tone}`);
 };
 
@@ -61,12 +64,41 @@ const setConfiguredLocations = items => {
   configuredLocationSet = new Set(configuredLocations.map(item => item.location));
 };
 
+const normalizeMembers = items => {
+  if (!Array.isArray(items)) return [];
+
+  return items
+    .map(item => {
+      const id = String(item?.id || "").trim();
+      if (!id) return null;
+
+      return {
+        id,
+        name: String(item?.name || "").trim(),
+        unit: String(item?.unit || "").trim()
+      };
+    })
+    .filter(Boolean);
+};
+
+const setAllowedMembers = items => {
+  allowedMembers = normalizeMembers(items);
+  allowedMemberById = new Map(allowedMembers.map(item => [item.id, item]));
+};
+
 const isConfiguredLocation = value => configuredLocationSet.has(String(value || ""));
+const getMember = id => allowedMemberById.get(String(id || "")) || null;
+const getMemberName = id => getMember(id)?.name || "";
+const getMemberLabel = id => {
+  const member = getMember(id);
+  if (!member?.name) return String(id || "-");
+  return `${String(id || "-")} / ${member.name}`;
+};
 
 const focusBarcodeInput = () => {
   window.setTimeout(() => {
-    const panel = $("scanner-panel");
-    const input = $("barcode-input");
+    const panel = $("scan-pnl");
+    const input = $("barcode");
 
     if (!scannerLocation || !input || panel?.hidden) return;
     if (document.activeElement === input) return;
@@ -102,8 +134,25 @@ const markRecentScan = (location, rawBarcode) => {
 };
 
 const fetchLocations = () => fetchJson("/locations");
+const fetchMembers = () => fetchJson("/members");
 const fetchAllStatus = () => fetchJson("/status");
 const fetchLogs = day => fetchJson(`/logs?day=${encodeURIComponent(day)}`);
+
+const loadMembers = () => {
+  if (membersLoadPromise) return membersLoadPromise;
+
+  membersLoadPromise = fetchMembers()
+    .then(data => {
+      setAllowedMembers(data);
+      return allowedMembers;
+    })
+    .catch(err => {
+      membersLoadPromise = null;
+      throw err;
+    });
+
+  return membersLoadPromise;
+};
 
 const postAccess = payload =>
   fetchJson("/access", {
@@ -165,9 +214,10 @@ const showDuplicateResult = ({ type, id }) => {
   showMessage(`${id}님 이미 ${action} 처리되었습니다`, "warn");
 };
 
-const showAccessResult = ({ type, id }) => {
+const showAccessResult = ({ type, id, name }) => {
   const action = type === "entry" ? "입영" : "퇴영";
-  showMessage(`${id}님 ${action}입니다`, "ok");
+  const label = String(name || "").trim() || String(id || "-");
+  showMessage(`${label}님 ${action}입니다`, "ok");
 };
 
 const handleDuplicateSubmit = (parsed, location, input) => {
@@ -179,7 +229,7 @@ const handleDuplicateSubmit = (parsed, location, input) => {
 };
 
 const populateLocationSelect = items => {
-  const select = $("location-select");
+  const select = $("loc-select");
   if (!select) return;
 
   const frag = document.createDocumentFragment();
@@ -197,7 +247,7 @@ const populateLocationSelect = items => {
 };
 
 const closeLocationDialog = () => {
-  const dialog = $("location-dialog");
+  const dialog = $("loc-dlg");
   if (dialog?.open) dialog.close();
 };
 
@@ -207,8 +257,8 @@ const openLocationDialog = () => {
     return false;
   }
 
-  const dialog = $("location-dialog");
-  const select = $("location-select");
+  const dialog = $("loc-dlg");
+  const select = $("loc-select");
   if (!dialog || !select) return false;
 
   populateLocationSelect(configuredLocations);
@@ -222,9 +272,9 @@ const openLocationDialog = () => {
 const activateScannerLocation = location => {
   scannerLocation = String(location || "").trim();
 
-  const locationPanel = $("location-select-panel");
-  const scannerPanel = $("scanner-panel");
-  const selectedText = $("selected-location-text");
+  const locationPanel = $("loc-pnl");
+  const scannerPanel = $("scan-pnl");
+  const selectedText = $("sel-loc-txt");
 
   if (selectedText) selectedText.textContent = scannerLocation || "-";
   if (locationPanel) locationPanel.hidden = !!scannerLocation;
@@ -237,7 +287,7 @@ const activateScannerLocation = location => {
 };
 
 const renderBoard = groups => {
-  const root = $("board-groups");
+  const root = $("bd-grid");
   if (!root) return;
 
   const statusByLocation = new Map();
@@ -252,7 +302,7 @@ const renderBoard = groups => {
   const frag = document.createDocumentFragment();
 
   if (configuredLocations.length === 0) {
-    const card = createElement("article", "board-card empty-card");
+    const card = createElement("article", "bd-card empty-card");
     card.appendChild(createElement("h2", "", "현황 없음"));
     card.appendChild(createElement("p", "", "등록된 location이 없습니다."));
     frag.appendChild(card);
@@ -262,16 +312,16 @@ const renderBoard = groups => {
 
   for (const item of configuredLocations) {
     const ids = statusByLocation.get(item.location) || [];
-    const card = createElement("article", "board-card");
+    const card = createElement("article", "bd-card");
     const list = createElement("ul", "id-list");
 
     card.appendChild(createElement("h2", "", item.location));
-    card.appendChild(createElement("div", "board-count", `인원 ${ids.length}명`));
+    card.appendChild(createElement("div", "bd-count", `인원 ${ids.length}명`));
 
     if (ids.length === 0) {
       list.appendChild(createElement("li", "empty-item", "현재 인원 없음"));
     } else {
-      for (const id of ids) list.appendChild(createElement("li", "id-item", id));
+      for (const id of ids) list.appendChild(createElement("li", "id-item", getMemberLabel(id)));
     }
 
     card.appendChild(list);
@@ -282,19 +332,20 @@ const renderBoard = groups => {
 };
 
 const renderLogs = () => {
-  const body = $("log-table-body");
+  const body = $("log-body");
   if (!body) return;
 
-  const query = $("log-search-input")?.value.trim().toLowerCase() || "";
-  const order = $("log-sort-select")?.value || "desc";
+  const query = $("log-q")?.value.trim().toLowerCase() || "";
+  const order = $("log-sort")?.value || "desc";
   const items = boardLogs
     .filter(item => {
       if (!isConfiguredLocation(item?.location)) return false;
       if (!query) return true;
 
       const id = String(item?.id || "").toLowerCase();
+      const name = getMemberName(item?.id).toLowerCase();
       const location = String(item?.location || "").toLowerCase();
-      return id.includes(query) || location.includes(query);
+      return id.includes(query) || name.includes(query) || location.includes(query);
     })
     .sort((left, right) => {
       const diff = String(left?.time || "").localeCompare(String(right?.time || ""));
@@ -307,7 +358,7 @@ const renderLogs = () => {
     const row = createElement("tr");
     const cell = createElement("td", "empty-cell", "로그가 없습니다.");
 
-    cell.colSpan = 4;
+    cell.colSpan = 5;
     row.appendChild(cell);
     frag.appendChild(row);
     body.replaceChildren(frag);
@@ -321,6 +372,7 @@ const renderLogs = () => {
     row.appendChild(createElement("td", "", item?.type === "entry" ? "입영" : "퇴영"));
     row.appendChild(createElement("td", "", String(item?.location || "-")));
     row.appendChild(createElement("td", "", String(item?.id || "-")));
+    row.appendChild(createElement("td", "", getMemberName(item?.id) || "-"));
     frag.appendChild(row);
   }
 
@@ -328,16 +380,18 @@ const renderLogs = () => {
 };
 
 const refreshBoard = async () => {
-  const root = $("board-groups");
+  const root = $("bd-grid");
   if (!root) return;
 
-  const status = $("board-status");
-  const updated = $("board-updated");
+  const status = $("bd-stat");
+  const updated = $("bd-upd");
 
   try {
+    const membersTask = loadMembers().catch(() => null);
     const [locations, data] = await Promise.all([fetchLocations(), fetchAllStatus()]);
 
     setConfiguredLocations(locations);
+    await membersTask;
     renderBoard(data);
     if (status) status.textContent = "정상";
     if (updated) updated.textContent = new Date().toLocaleString();
@@ -347,19 +401,21 @@ const refreshBoard = async () => {
 };
 
 const refreshLogs = async () => {
-  const body = $("log-table-body");
+  const body = $("log-body");
   if (!body) return;
 
-  const status = $("board-status");
-  const updated = $("board-updated");
-  const dayInput = $("log-day-input");
+  const status = $("bd-stat");
+  const updated = $("bd-upd");
+  const dayInput = $("log-day");
   const day = dayInput?.value || getCurrentKstDay();
 
   try {
+    const membersTask = loadMembers().catch(() => null);
     const [locations, data] = await Promise.all([fetchLocations(), fetchLogs(day)]);
 
     setConfiguredLocations(locations);
     boardLogs = Array.isArray(data) ? data : [];
+    await membersTask;
     renderLogs();
     if (status) status.textContent = "정상";
     if (updated) updated.textContent = new Date().toLocaleString();
@@ -376,10 +432,10 @@ const refreshActiveBoardView = () => {
 const setBoardView = view => {
   activeBoardView = view === "logs" ? "logs" : "status";
 
-  const statusView = $("board-status-view");
-  const logsView = $("board-logs-view");
-  const statusButton = $("show-status-view-button");
-  const logsButton = $("show-logs-view-button");
+  const statusView = $("stat-view");
+  const logsView = $("log-view");
+  const statusButton = $("view-stat-btn");
+  const logsButton = $("view-log-btn");
   const isLogsView = activeBoardView === "logs";
 
   if (statusView) statusView.hidden = isLogsView;
@@ -389,7 +445,7 @@ const setBoardView = view => {
 };
 
 const startBoardPolling = () => {
-  const root = $("board-groups");
+  const root = $("bd-grid");
   if (!root) return;
 
   if (boardTimerId !== null) clearInterval(boardTimerId);
@@ -400,7 +456,7 @@ const startBoardPolling = () => {
 };
 
 const submitAccess = async () => {
-  const input = $("barcode-input");
+  const input = $("barcode");
   const location = scannerLocation;
   const parsed = parseBarcode(input?.value);
 
@@ -419,10 +475,11 @@ const submitAccess = async () => {
 
   try {
     const { type, id, raw } = parsed;
+    const data = await postAccess({ type, id, location });
+    const name = String(data?.name || "").trim() || getMemberName(id);
 
-    await postAccess({ type, id, location });
     markRecentScan(location, raw);
-    showAccessResult(parsed);
+    showAccessResult({ type, id, name });
     clearInput(input);
   } catch (err) {
     showMessage(err.message || "처리에 실패했습니다.", "error");
@@ -433,12 +490,12 @@ const submitAccess = async () => {
 };
 
 const initScannerPage = async () => {
-  const input = $("barcode-input");
-  const button = $("choose-location-button");
-  const dialog = $("location-dialog");
-  const dialogForm = $("location-dialog-form");
-  const select = $("location-select");
-  const cancelButton = $("cancel-location-button");
+  const input = $("barcode");
+  const button = $("loc-btn");
+  const dialog = $("loc-dlg");
+  const dialogForm = $("loc-form");
+  const select = $("loc-select");
+  const cancelButton = $("loc-cancel");
 
   if (!input || !button || !dialog || !dialogForm || !select || !cancelButton) return;
 
@@ -497,9 +554,9 @@ const initScannerPage = async () => {
   });
 
   try {
-    const data = await fetchLocations();
+    const locationData = await fetchLocations();
 
-    setConfiguredLocations(data);
+    setConfiguredLocations(locationData);
     populateLocationSelect(configuredLocations);
 
     if (configuredLocations.length === 0) {
@@ -518,13 +575,13 @@ const initScannerPage = async () => {
 };
 
 const initBoardPage = () => {
-  const root = $("board-groups");
-  const button = $("refresh-board-button");
-  const statusButton = $("show-status-view-button");
-  const logsButton = $("show-logs-view-button");
-  const dayInput = $("log-day-input");
-  const searchInput = $("log-search-input");
-  const sortInput = $("log-sort-select");
+  const root = $("bd-grid");
+  const button = $("bd-refresh");
+  const statusButton = $("view-stat-btn");
+  const logsButton = $("view-log-btn");
+  const dayInput = $("log-day");
+  const searchInput = $("log-q");
+  const sortInput = $("log-sort");
 
   if (!root) return;
 

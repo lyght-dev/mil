@@ -137,22 +137,37 @@ function Get-StringField {
     return [string]$property.Value
 }
 
-function Import-AllowedIds {
+function Import-Members {
     param(
         [Parameter(Mandatory = $true)]
         [string]$ListPath
     )
 
     $items = Get-Content -LiteralPath $ListPath -Raw | ConvertFrom-Json
+    $members = New-Object System.Collections.ArrayList
     $allowedIds = @{}
+    $memberById = @{}
 
     foreach ($item in @($items)) {
         $id = Get-StringField -Object $item -Name "id"
         if ([string]::IsNullOrWhiteSpace($id)) { continue }
+
+        $member = [pscustomobject]@{
+            id = $id
+            name = Get-StringField -Object $item -Name "name"
+            unit = Get-StringField -Object $item -Name "unit"
+        }
+
+        [void]$members.Add($member)
         $allowedIds[$id] = $true
+        $memberById[$id] = $member
     }
 
-    return $allowedIds
+    return @{
+        Members = @($members)
+        AllowedIds = $allowedIds
+        MemberById = $memberById
+    }
 }
 
 function Import-Locations {
@@ -557,6 +572,19 @@ function Invoke-LocationsRoute {
     Send-JsonResponse -Response $Response -Payload @($Locations) -AsArray
     return $true
 }
+
+function Invoke-MembersRoute {
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Net.HttpListenerResponse]$Response,
+
+        [Parameter(Mandatory = $true)]
+        [object[]]$Members
+    )
+
+    Send-JsonResponse -Response $Response -Payload @($Members) -AsArray
+    return $true
+}
  
 function Invoke-AccessRoute {
     param(
@@ -573,7 +601,10 @@ function Invoke-AccessRoute {
         [string]$LogPath,
 
         [Parameter(Mandatory = $true)]
-        [hashtable]$AllowedIds
+        [hashtable]$AllowedIds,
+
+        [Parameter(Mandatory = $true)]
+        [hashtable]$MemberById
     )
 
     $payload = Read-AccessPayload -Request $Request -Response $Response
@@ -606,7 +637,13 @@ function Invoke-AccessRoute {
         return $true
     }
 
-    Send-JsonResponse -Response $Response -Payload @{ status = "logged" }
+    $member = if ($MemberById.ContainsKey($id)) { $MemberById[$id] } else { $null }
+
+    Send-JsonResponse -Response $Response -Payload @{
+        status = "logged"
+        id = $id
+        name = Get-StringField -Object $member -Name "name"
+    }
     return $true
 }
 
@@ -625,6 +662,12 @@ function Invoke-ApiRoute {
         [hashtable]$AllowedIds,
 
         [Parameter(Mandatory = $true)]
+        [hashtable]$MemberById,
+
+        [Parameter(Mandatory = $true)]
+        [object[]]$Members,
+
+        [Parameter(Mandatory = $true)]
         [object[]]$Locations
     )
 
@@ -634,9 +677,10 @@ function Invoke-ApiRoute {
     $method = $request.HttpMethod.ToUpperInvariant()
 
     if ($method -eq "GET" -and $path -eq "/status") { return (Invoke-StatusRoute -Response $response -State $State -Location ([string]$request.QueryString["location"])) }
+    if ($method -eq "GET" -and $path -eq "/members") { return (Invoke-MembersRoute -Response $response -Members $Members) }
     if ($method -eq "GET" -and $path -eq "/locations") { return (Invoke-LocationsRoute -Response $response -Locations $Locations) }
     if ($method -eq "GET" -and $path -eq "/logs") { return (Invoke-LogsRoute -Request $request -Response $response -LogPath $LogPath) }
-    if ($method -eq "POST" -and $path -eq "/access") { return (Invoke-AccessRoute -Request $request -Response $response -State $State -LogPath $LogPath -AllowedIds $AllowedIds) }
+    if ($method -eq "POST" -and $path -eq "/access") { return (Invoke-AccessRoute -Request $request -Response $response -State $State -LogPath $LogPath -AllowedIds $AllowedIds -MemberById $MemberById) }
 
     return $false
 }
@@ -659,11 +703,17 @@ function Invoke-Request {
         [hashtable]$AllowedIds,
 
         [Parameter(Mandatory = $true)]
+        [hashtable]$MemberById,
+
+        [Parameter(Mandatory = $true)]
+        [object[]]$Members,
+
+        [Parameter(Mandatory = $true)]
         [object[]]$Locations
     )
 
     if (Invoke-StaticResourceRoute -Context $Context -AppRoot $AppRoot) { return }
-    if (Invoke-ApiRoute -Context $Context -State $State -LogPath $LogPath -AllowedIds $AllowedIds -Locations $Locations) { return }
+    if (Invoke-ApiRoute -Context $Context -State $State -LogPath $LogPath -AllowedIds $AllowedIds -MemberById $MemberById -Members $Members -Locations $Locations) { return }
     Send-TextResponse -Response $Context.Response -Text "Not Found" -StatusCode 404
 }
 
@@ -672,7 +722,10 @@ function Start-AcsServer {
     $logPath = Join-Path $appRoot "logs/access-log.csv"
     $listPath = Join-Path $appRoot "list.json"
     $locationPath = Join-Path $appRoot "location.json"
-    $allowedIds = Import-AllowedIds -ListPath $listPath
+    $membersData = Import-Members -ListPath $listPath
+    $members = @($membersData.Members)
+    $allowedIds = $membersData.AllowedIds
+    $memberById = $membersData.MemberById
     $locations = @(Import-Locations -LocationPath $locationPath)
 
     $state = @{
@@ -699,7 +752,7 @@ function Start-AcsServer {
             $context = $listener.GetContext()
 
             try {
-                Invoke-Request -Context $context -AppRoot $appRoot -State $state -LogPath $logPath -AllowedIds $allowedIds -Locations $locations
+                Invoke-Request -Context $context -AppRoot $appRoot -State $state -LogPath $logPath -AllowedIds $allowedIds -MemberById $memberById -Members $members -Locations $locations
             } catch {
                 Send-InternalServerError -Response $context.Response
             }

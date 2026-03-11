@@ -13,65 +13,66 @@
         <h1>7136부대 위치 정보 관리 시스템</h1>
       </div>
       <div class="actions">
-        <a class="link-button" href="/index.html">스캐너로 이동</a>
-        <button id="refresh-board-button" class="link-button" type="button">새로고침</button>
+        <a class="btn-link" href="/index.html">스캐너로 이동</a>
+        <button id="bd-refresh" class="btn-link" type="button">새로고침</button>
       </div>
     </header>
 
-    <section class="board-meta">
-      <div>상태: <span id="board-status">정상</span></div>
-      <div>마지막 갱신: <span id="board-updated">-</span></div>
+    <section class="bd-meta">
+      <div>상태: <span id="bd-stat">정상</span></div>
+      <div>마지막 갱신: <span id="bd-upd">-</span></div>
     </section>
 
-    <section class="board-switch" aria-label="현황판 보기 전환">
-      <button id="show-status-view-button" class="switch-button" type="button">현황 보기</button>
-      <button id="show-logs-view-button" class="switch-button is-active" type="button">로그 보기</button>
+    <section class="view-sw" aria-label="현황판 보기 전환">
+      <button id="view-stat-btn" class="sw-btn" type="button">현황 보기</button>
+      <button id="view-log-btn" class="sw-btn is-active" type="button">로그 보기</button>
     </section>
 
-    <section id="board-status-view" class="board-view" aria-live="polite" hidden>
-      <section id="board-groups" class="board-groups">
-        <article class="board-card empty-card">
+    <section id="stat-view" class="view-pane" aria-live="polite" hidden>
+      <section id="bd-grid" class="bd-grid">
+        <article class="bd-card empty-card">
           <h2>현황 없음</h2>
           <p>아직 데이터가 없습니다.</p>
         </article>
       </section>
     </section>
 
-    <section id="board-logs-view" class="board-view">
-      <section class="panel log-controls">
-        <label class="field log-field">
+    <section id="log-view" class="view-pane">
+      <section class="panel log-ctrl">
+        <label class="field log-fld">
           <span>날짜</span>
-          <input id="log-day-input" type="date">
+          <input id="log-day" type="date">
         </label>
 
-        <label class="field log-field">
+        <label class="field log-fld">
           <span>검색</span>
-          <input id="log-search-input" type="text" autocomplete="off" placeholder="군번 또는 위치">
+          <input id="log-q" type="text" autocomplete="off" placeholder="군번, 이름 또는 위치">
         </label>
 
-        <label class="field log-field">
+        <label class="field log-fld">
           <span>정렬</span>
-          <select id="log-sort-select" class="select-input">
+          <select id="log-sort">
             <option value="desc">최신순</option>
             <option value="asc">오래된순</option>
           </select>
         </label>
       </section>
 
-      <section class="log-table-shell" aria-live="polite">
-        <div class="log-table-wrap">
-          <table class="log-table">
+      <section class="log-box" aria-live="polite">
+        <div class="tbl-wrap">
+          <table class="tbl-log">
             <thead>
               <tr>
                 <th scope="col">시간</th>
                 <th scope="col">구분</th>
                 <th scope="col">위치</th>
                 <th scope="col">군번</th>
+                <th scope="col">이름</th>
               </tr>
             </thead>
-            <tbody id="log-table-body">
+            <tbody id="log-body">
               <tr>
-                <td colspan="4" class="empty-cell">로그가 없습니다.</td>
+                <td colspan="5" class="empty-cell">로그가 없습니다.</td>
               </tr>
             </tbody>
           </table>
