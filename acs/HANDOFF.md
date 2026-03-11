@@ -3,6 +3,24 @@
 ## 2026-03-11
 
 ### 작업 요약
+- `acs/server.ps1`의 현재 상태 갱신 로직을 수정함.
+  - 기존에는 `Set-CurrentStatus`가 `entry`/`exit`를 구분하지 않고 항상 해당 location에 `id`를 다시 넣었음
+  - 이제는 모든 location에서 해당 `id`를 먼저 제거하고, `type`이 `entry`일 때만 요청 location에 다시 추가함
+- 이 수정으로 `EN` 직후 `EX`를 같은 location에서 수행한 경우 현황표에 인원이 남아 있던 문제가 해소됨.
+- CSV 재복원(`Import-CurrentStatus`)도 같은 함수를 사용하므로, 서버 재시작 후 현황표도 동일하게 바로잡힘
+
+### 다음 세션 인계 포인트
+- `GET /status`의 기준은 여전히 "마지막 entry location"이다.
+- `exit`는 현재 상태에서 `id`를 제거만 하고, 어떤 location에도 남기지 않는다.
+- 실사용 확인 시에는 서버 프로세스를 재시작해야 수정된 `acs/server.ps1`이 반영된다.
+
+### 검증 내역
+- `pwsh -NoLogo -NoProfile -Command '...Set-CurrentStatus...Import-CurrentStatus...'`
+  - `entry` 후 `{"location":"위병소","ids":["a25-76000001"]}` 확인
+  - 직후 `exit` 후 `{"location":"위병소","ids":[]}` 확인
+  - `entry -> exit` CSV 재복원 후에도 `{"location":"위병소","ids":[]}` 확인
+
+### 작업 요약
 - `acs/index.html`, `acs/script.js`, `acs/style.css`의 스캐너 진입 방식을 입력형 `prompt`에서 `select` 기반 모달로 변경함.
   - 진입 시 `/locations` 후보 목록을 채운 모달을 자동으로 열어 location을 선택하게 함
   - 선택 UI는 브라우저 입력창이 아니라 `select` 드롭다운만 사용함

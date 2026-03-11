@@ -338,25 +338,19 @@ function Set-CurrentStatus {
 
     [System.Threading.Monitor]::Enter($State.Lock)
     try {
+        foreach ($name in @($State.Current.Keys)) {
+            [void]$State.Current[$name].Remove($Id)
+        }
+
+        if ($Type -ne "entry") {
+            return
+        }
+
         if (-not $State.Current.ContainsKey($Location)) {
             $State.Current[$Location] = @{}
         }
 
         $bucket = $State.Current[$Location]
-
-        foreach ($name in @($State.Current.Keys)) {
-            if ($name -eq $Location) {
-                continue
-            }
-
-            $other = $State.Current[$name]
-            if (-not $other.ContainsKey($Id)) {
-                continue
-            }
-
-            $other.Remove($Id)
-        }
-
         $bucket[$Id] = $true
     } finally {
         [System.Threading.Monitor]::Exit($State.Lock)
