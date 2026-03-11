@@ -1,5 +1,29 @@
 # HANDOFF
 
+## 2026-03-11
+
+### 작업 요약
+- `acs/script.js`의 스캐너 입력 흐름에서 `form submit` 경로를 제거함.
+  - `submit` listener를 제거함
+  - Enter 입력과 CR/LF 입력 핸들러가 `requestSubmit()` 대신 `submitAccess()`를 직접 호출함
+  - `submitAccess()` 내부에서 바로 `postAccess()`로 `POST /access` 요청을 보냄
+- `acs/script.js`를 ES6 스타일 기준으로 다시 정리함.
+  - 함수 선언을 `const` + 화살표 함수 중심으로 정리함
+  - 가능한 곳에 구조분해 할당을 적용함
+  - `group?.location`, `data?.message`, `loc?.value`처럼 optional chaining으로 축약함
+  - 한 줄로 충분한 `if`는 중괄호 없이 정리함
+  - 짧은 블록 스코프 임시 변수는 `requestError`보다 `err`처럼 짧은 이름을 우선함
+  - 미사용 `catch` 바인딩은 제거하고, 지역 변수는 `response`/`payload`보다 `res`/`data`처럼 짧게 정리함
+- 기존 동작은 유지함.
+  - 15초 중복 스캔 억제 유지
+  - 성공/오류 메시지 처리 유지
+  - 보드 polling 및 수동 새로고침 유지
+
+### 다음 세션 인계 포인트
+- 현재 스캐너 페이지는 `form` 엘리먼트를 마크업으로는 유지하지만, 요청 전송은 더 이상 submit 이벤트에 의존하지 않는다.
+- 바코드 입력에서 Enter 또는 줄바꿈이 들어오면 클라이언트 핸들러가 즉시 `postAccess()`를 호출한다.
+- 이번 변경은 프론트 JS 구조 정리와 요청 트리거 변경만 포함하며, 서버 API나 HTML 구조는 바꾸지 않았다.
+
 ## 2026-03-09
 
 ### 작업 요약

@@ -1,261 +1,199 @@
 const DUPLICATE_WINDOW_MS = 15000;
 const BOARD_POLL_MS = 5000;
 
-function $(id) {
-  return document.getElementById(id);
-}
+const $ = id => document.getElementById(id);
 
 let boardTimerId = null;
 const recentScans = {};
 
-async function fetchJson(url, options) {
-  const response = await fetch(url, options);
-  const text = await response.text();
-  let payload = null;
+const fetchJson = async (url, options) => {
+  const res = await fetch(url, options);
+  const text = await res.text();
+  let data = null;
 
   if (text) {
     try {
-      payload = JSON.parse(text);
-    } catch (error) {
-      payload = null;
+      data = JSON.parse(text);
+    } catch {
+      data = null;
     }
   }
 
-  if (!response.ok) {
-    const message = payload && payload.message ? payload.message : "HTTP " + response.status;
-    const requestError = new Error(message);
-    requestError.status = response.status;
-    requestError.payload = payload;
-    throw requestError;
+  if (!res.ok) {
+    const err = new Error(data?.message || `HTTP ${res.status}`);
+    err.status = res.status;
+    err.payload = data;
+    throw err;
   }
 
-  return payload;
-}
+  return data;
+};
 
-function showMessage(text, tone) {
+const showMessage = (text, tone) => {
   const el = $("message-text");
-  if (!el) {
-    return;
-  }
+  if (!el) return;
 
   el.textContent = text;
   el.className = "message-text";
-  if (tone) {
-    el.classList.add("tone-" + tone);
-  }
-}
+  if (tone) el.classList.add(`tone-${tone}`);
+};
 
-function focusBarcodeInput() {
-  const input = $("barcode-input");
-  if (!input) {
-    return;
-  }
+const focusBarcodeInput = () => {
+  window.setTimeout(() => {
+    const loc = $("location-input");
+    const input = $("barcode-input");
 
-  window.setTimeout(function () {
-    const location = $("location-input");
-    const next = $("barcode-input");
+    if (!input || document.activeElement === loc) return;
 
-    if (!next) {
-      return;
-    }
-
-    if (document.activeElement === location) {
-      return;
-    }
-
-    next.focus();
-    next.select();
+    input.focus();
+    input.select();
   }, 0);
-}
+};
 
-function parseBarcode(rawValue) {
+const parseBarcode = rawValue => {
   const value = String(rawValue || "").replace(/\r/g, "").replace(/\n/g, "").trim();
   const upper = value.slice(0, 2).toUpperCase();
   const id = value.slice(2).trim();
 
-  if (!value || !id) {
-    return { ok: false, message: "바코드를 다시 확인해 주세요." };
-  }
-
-  if (upper === "EN") {
-    return { ok: true, type: "entry", id: id, raw: value };
-  }
-
-  if (upper === "EX") {
-    return { ok: true, type: "exit", id: id, raw: value };
-  }
+  if (!value || !id) return { ok: false, message: "바코드를 다시 확인해 주세요." };
+  if (upper === "EN") return { ok: true, type: "entry", id, raw: value };
+  if (upper === "EX") return { ok: true, type: "exit", id, raw: value };
 
   return { ok: false, message: "지원하지 않는 바코드입니다." };
-}
+};
 
-function getDuplicateKey(location, rawBarcode) {
-  return String(location || "") + "|" + String(rawBarcode || "");
-}
+const getDuplicateKey = (location, rawBarcode) => `${String(location || "")}|${String(rawBarcode || "")}`;
 
-function shouldIgnoreDuplicate(location, rawBarcode) {
-  const key = getDuplicateKey(location, rawBarcode);
-  const lastAt = recentScans[key];
-  if (!lastAt) {
-    return false;
-  }
+const shouldIgnoreDuplicate = (location, rawBarcode) => {
+  const lastAt = recentScans[getDuplicateKey(location, rawBarcode)];
+  if (!lastAt) return false;
 
   return Date.now() - lastAt < DUPLICATE_WINDOW_MS;
-}
+};
 
-function markRecentScan(location, rawBarcode) {
+const markRecentScan = (location, rawBarcode) => {
   recentScans[getDuplicateKey(location, rawBarcode)] = Date.now();
-}
+};
 
-function fetchAllStatus() {
-  return fetchJson("/status");
-}
+const fetchAllStatus = () => fetchJson("/status");
 
-function postAccess(payload) {
-  return fetchJson("/access", {
+const postAccess = payload =>
+  fetchJson("/access", {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
     },
     body: JSON.stringify(payload)
   });
-}
 
-function createElement(tagName, className, text) {
+const createElement = (tagName, className, text) => {
   const el = document.createElement(tagName);
 
-  if (className) {
-    el.className = className;
-  }
-
-  if (typeof text !== "undefined") {
-    el.textContent = text;
-  }
+  if (className) el.className = className;
+  if (typeof text !== "undefined") el.textContent = text;
 
   return el;
-}
+};
 
-function clearInput(input) {
-  if (input) {
-    input.value = "";
-  }
-}
+const clearInput = input => {
+  if (input) input.value = "";
+};
 
-function resetInput(input) {
+const resetInput = input => {
   clearInput(input);
   focusBarcodeInput();
-}
+};
 
-function showDuplicateResult(parsed) {
-  const action = parsed.type === "entry" ? "입영" : "퇴영";
-  showMessage(`${parsed.id}님 이미 ${action} 처리되었습니다`, "warn");
-}
+const showDuplicateResult = ({ type, id }) => {
+  const action = type === "entry" ? "입영" : "퇴영";
+  showMessage(`${id}님 이미 ${action} 처리되었습니다`, "warn");
+};
 
-function showAccessResult(parsed) {
-  const action = parsed.type === "entry" ? "입영" : "퇴영";
-  showMessage(`${parsed.id}님 ${action}입니다`, "ok");
-}
+const showAccessResult = ({ type, id }) => {
+  const action = type === "entry" ? "입영" : "퇴영";
+  showMessage(`${id}님 ${action}입니다`, "ok");
+};
 
-function handleDuplicateSubmit(parsed, location, input) {
-  if (shouldIgnoreDuplicate(location, parsed.raw)) {
-    showDuplicateResult(parsed);
-    resetInput(input);
-    return true;
-  }
+const handleDuplicateSubmit = (parsed, location, input) => {
+  if (!shouldIgnoreDuplicate(location, parsed.raw)) return false;
 
-  return false;
-}
+  showDuplicateResult(parsed);
+  resetInput(input);
+  return true;
+};
 
-function renderBoard(groups) {
+const renderBoard = groups => {
   const root = $("board-groups");
-  if (!root) {
-    return;
-  }
+  if (!root) return;
 
   const items = Array.isArray(groups) ? groups : [];
-  const fragment = document.createDocumentFragment();
+  const frag = document.createDocumentFragment();
 
   if (items.length === 0) {
     const card = createElement("article", "board-card empty-card");
     card.appendChild(createElement("h2", "", "현황 없음"));
     card.appendChild(createElement("p", "", "아직 데이터가 없습니다."));
-    fragment.appendChild(card);
-    root.replaceChildren(fragment);
+    frag.appendChild(card);
+    root.replaceChildren(frag);
     return;
   }
 
   for (const group of items) {
-    const location = group && group.location ? String(group.location) : "unknown";
-    const ids = Array.isArray(group && group.ids) ? group.ids : [];
+    const location = group?.location ? String(group.location) : "unknown";
+    const ids = Array.isArray(group?.ids) ? group.ids : [];
     const card = createElement("article", "board-card");
     const list = createElement("ul", "id-list");
 
     card.appendChild(createElement("h2", "", location));
-    card.appendChild(createElement("div", "board-count", "인원 " + ids.length + "명"));
+    card.appendChild(createElement("div", "board-count", `인원 ${ids.length}명`));
 
     if (ids.length === 0) {
       list.appendChild(createElement("li", "empty-item", "현재 인원 없음"));
     } else {
-      for (const id of ids) {
-        list.appendChild(createElement("li", "id-item", id));
-      }
+      for (const id of ids) list.appendChild(createElement("li", "id-item", id));
     }
 
     card.appendChild(list);
-    fragment.appendChild(card);
+    frag.appendChild(card);
   }
 
-  root.replaceChildren(fragment);
-}
+  root.replaceChildren(frag);
+};
 
-async function refreshBoard() {
+const refreshBoard = async () => {
   const root = $("board-groups");
-  if (!root) {
-    return;
-  }
+  if (!root) return;
+
+  const status = $("board-status");
+  const updated = $("board-updated");
 
   try {
-    const payload = await fetchAllStatus();
-    const status = $("board-status");
-    const updated = $("board-updated");
+    const data = await fetchAllStatus();
 
-    renderBoard(payload);
-    if (status) {
-      status.textContent = "정상";
-    }
-    if (updated) {
-      updated.textContent = new Date().toLocaleString();
-    }
-  } catch (error) {
-    const status = $("board-status");
-
-    if (status) {
-      status.textContent = "실패";
-    }
+    renderBoard(data);
+    if (status) status.textContent = "정상";
+    if (updated) updated.textContent = new Date().toLocaleString();
+  } catch {
+    if (status) status.textContent = "실패";
   }
-}
+};
 
-function startBoardPolling() {
+const startBoardPolling = () => {
   const root = $("board-groups");
-  if (!root) {
-    return;
-  }
+  if (!root) return;
 
-  if (boardTimerId !== null) {
-    clearInterval(boardTimerId);
-  }
+  if (boardTimerId !== null) clearInterval(boardTimerId);
 
-  boardTimerId = window.setInterval(function () {
+  boardTimerId = window.setInterval(() => {
     void refreshBoard();
   }, BOARD_POLL_MS);
-}
+};
 
-async function handleSubmit(event) {
-  event.preventDefault();
-
+const submitAccess = async () => {
   const loc = $("location-input");
   const input = $("barcode-input");
-  const location = loc ? loc.value.trim() : "";
-  const parsed = parseBarcode(input ? input.value : "");
+  const location = loc?.value.trim() || "";
+  const parsed = parseBarcode(input?.value);
 
   if (!location) {
     showMessage("location을 입력해 주세요.", "error");
@@ -269,90 +207,65 @@ async function handleSubmit(event) {
     return;
   }
 
-  if (handleDuplicateSubmit(parsed, location, input)) {
-    return;
-  }
+  if (handleDuplicateSubmit(parsed, location, input)) return;
 
   try {
-    await postAccess({
-      type: parsed.type,
-      id: parsed.id,
-      location: location
-    });
+    const { type, id, raw } = parsed;
 
-    markRecentScan(location, parsed.raw);
+    await postAccess({ type, id, location });
+    markRecentScan(location, raw);
     showAccessResult(parsed);
     clearInput(input);
-  } catch (error) {
-    showMessage(error.message || "처리에 실패했습니다.", "error");
+  } catch (err) {
+    showMessage(err.message || "처리에 실패했습니다.", "error");
     clearInput(input);
   } finally {
     focusBarcodeInput();
   }
-}
+};
 
-function initScannerPage() {
-  const form = $("scan-form");
+const initScannerPage = () => {
   const input = $("barcode-input");
+  if (!input) return;
 
-  if (!form || !input) {
-    return;
-  }
-
-  form.addEventListener("submit", handleSubmit);
-
-  input.addEventListener("keydown", function (event) {
-    if (event.key !== "Enter") {
-      return;
-    }
+  input.addEventListener("keydown", event => {
+    if (event.key !== "Enter") return;
 
     event.preventDefault();
-    form.requestSubmit();
+    void submitAccess();
   });
 
-  input.addEventListener("input", function () {
-    if (!input.value.includes("\n") && !input.value.includes("\r")) {
-      return;
-    }
+  input.addEventListener("input", () => {
+    if (!input.value.includes("\n") && !input.value.includes("\r")) return;
 
     input.value = input.value.replace(/[\r\n]+/g, "");
-    form.requestSubmit();
+    void submitAccess();
   });
 
-  input.addEventListener("blur", function () {
+  input.addEventListener("blur", () => {
     focusBarcodeInput();
   });
 
-  document.addEventListener("click", function (event) {
-    const location = $("location-input");
-
-    if (event.target === location) {
-      return;
-    }
+  document.addEventListener("click", event => {
+    const loc = $("location-input");
+    if (event.target === loc) return;
 
     focusBarcodeInput();
   });
 
   focusBarcodeInput();
-}
+};
 
-function initBoardPage() {
+const initBoardPage = () => {
   const root = $("board-groups");
   const button = $("refresh-board-button");
+  if (!root) return;
 
-  if (!root) {
-    return;
-  }
-
-  if (button) {
-    button.addEventListener("click", function () {
-      void refreshBoard();
-    });
-  }
+  if (button) button.addEventListener("click", () => void refreshBoard());
 
   void refreshBoard();
   startBoardPolling();
-}
+};
 
 initScannerPage();
 initBoardPage();
