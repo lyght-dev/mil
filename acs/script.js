@@ -12,12 +12,11 @@ let configuredLocations = [];
 let configuredLocationSet = new Set();
 let allowedMembers = [];
 let allowedMemberById = new Map();
+let locationsLoadPromise = null;
 let membersLoadPromise = null;
 const recentScans = {};
 
-const fetchJson = async (url, options) => {
-  const res = await fetch(url, options);
-  const text = await res.text();
+const createRequestError = (status, text) => {
   let data = null;
 
   if (text) {
@@ -28,14 +27,30 @@ const fetchJson = async (url, options) => {
     }
   }
 
-  if (!res.ok) {
-    const err = new Error(data?.message || `HTTP ${res.status}`);
-    err.status = res.status;
-    err.payload = data;
-    throw err;
-  }
+  const err = new Error(data?.message || `HTTP ${status}`);
+  err.status = status;
+  err.payload = data;
+  return err;
+};
 
-  return data;
+const fetchText = async (url, options) => {
+  const res = await fetch(url, options);
+  const text = await res.text();
+
+  if (!res.ok) throw createRequestError(res.status, text);
+  return text;
+};
+
+const fetchJson = async (url, options) => {
+  const text = await fetchText(url, options);
+
+  if (!text) return null;
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
 };
 
 const showMessage = (text, tone) => {
@@ -133,10 +148,26 @@ const markRecentScan = (location, rawBarcode) => {
   recentScans[getDuplicateKey(location, rawBarcode)] = Date.now();
 };
 
-const fetchLocations = () => fetchJson("/locations");
-const fetchMembers = () => fetchJson("/members");
+const fetchLocations = () => fetchJson("/location.json");
+const fetchMembers = () => fetchJson("/list.json");
 const fetchAllStatus = () => fetchJson("/status");
-const fetchLogs = day => fetchJson(`/logs?day=${encodeURIComponent(day)}`);
+const fetchLogsCsv = () => fetchText(`/logs/access-log.csv?ts=${Date.now()}`, { cache: "no-store" });
+
+const loadLocations = () => {
+  if (locationsLoadPromise) return locationsLoadPromise;
+
+  locationsLoadPromise = fetchLocations()
+    .then(data => {
+      setConfiguredLocations(data);
+      return configuredLocations;
+    })
+    .catch(err => {
+      locationsLoadPromise = null;
+      throw err;
+    });
+
+  return locationsLoadPromise;
+};
 
 const loadMembers = () => {
   if (membersLoadPromise) return membersLoadPromise;
@@ -176,28 +207,66 @@ const padNumber = value => String(value).padStart(2, "0");
 
 const toKstDate = value => new Date(new Date(value).getTime() + KST_OFFSET_MS);
 
-const getCurrentKstDay = () => {
-  const now = new Date(Date.now() + KST_OFFSET_MS);
-  const year = now.getUTCFullYear();
-  const month = padNumber(now.getUTCMonth() + 1);
-  const day = padNumber(now.getUTCDate());
+const getKstDateParts = value => {
+  const date = toKstDate(value);
+  if (Number.isNaN(date.getTime())) return null;
 
-  return `${year}-${month}-${day}`;
+  return {
+    year: date.getUTCFullYear(),
+    month: padNumber(date.getUTCMonth() + 1),
+    day: padNumber(date.getUTCDate()),
+    hour: padNumber(date.getUTCHours()),
+    minute: padNumber(date.getUTCMinutes()),
+    second: padNumber(date.getUTCSeconds())
+  };
+};
+
+const getCurrentKstDay = () => {
+  const parts = getKstDateParts(Date.now());
+  return `${parts.year}-${parts.month}-${parts.day}`;
+};
+
+const getKstDay = value => {
+  const parts = getKstDateParts(value);
+  if (!parts) return "";
+  return `${parts.year}-${parts.month}-${parts.day}`;
 };
 
 const formatLogTime = value => {
-  const date = toKstDate(value);
+  const parts = getKstDateParts(value);
+  if (!parts) return String(value || "-");
 
-  if (Number.isNaN(date.getTime())) return String(value || "-");
+  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`;
+};
 
-  const year = date.getUTCFullYear();
-  const month = padNumber(date.getUTCMonth() + 1);
-  const day = padNumber(date.getUTCDate());
-  const hour = padNumber(date.getUTCHours());
-  const minute = padNumber(date.getUTCMinutes());
-  const second = padNumber(date.getUTCSeconds());
+const parseAccessLogLine = line => {
+  const values = String(line || "").split(",");
+  if (values.length < 4) return null;
 
-  return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
+  const time = String(values[0] || "").trim();
+  const type = String(values[1] || "").trim();
+  const location = String(values[2] || "").trim();
+  const id = String(values[3] || "").trim();
+
+  if (!time || !type || !location || !id) return null;
+  return { time, type, location, id };
+};
+
+const parseAccessLogsCsv = (text, day) => {
+  const rows = String(text || "").replace(/\r/g, "").split("\n");
+  const items = [];
+
+  for (const row of rows) {
+    const trimmed = row.trim();
+    if (!trimmed || trimmed === "time,type,location,id") continue;
+
+    const item = parseAccessLogLine(trimmed);
+    if (!item || getKstDay(item.time) !== day) continue;
+
+    items.push(item);
+  }
+
+  return items;
 };
 
 const clearInput = input => {
@@ -388,7 +457,7 @@ const refreshBoard = async () => {
 
   try {
     const membersTask = loadMembers().catch(() => null);
-    const [locations, data] = await Promise.all([fetchLocations(), fetchAllStatus()]);
+    const [locations, data] = await Promise.all([loadLocations(), fetchAllStatus()]);
 
     setConfiguredLocations(locations);
     await membersTask;
@@ -411,10 +480,10 @@ const refreshLogs = async () => {
 
   try {
     const membersTask = loadMembers().catch(() => null);
-    const [locations, data] = await Promise.all([fetchLocations(), fetchLogs(day)]);
+    const [locations, csvText] = await Promise.all([loadLocations(), fetchLogsCsv()]);
 
     setConfiguredLocations(locations);
-    boardLogs = Array.isArray(data) ? data : [];
+    boardLogs = parseAccessLogsCsv(csvText, day);
     await membersTask;
     renderLogs();
     if (status) status.textContent = "정상";
@@ -475,11 +544,10 @@ const submitAccess = async () => {
 
   try {
     const { type, id, raw } = parsed;
-    const data = await postAccess({ type, id, location });
-    const name = String(data?.name || "").trim() || getMemberName(id);
+    await postAccess({ type, id, location });
 
     markRecentScan(location, raw);
-    showAccessResult({ type, id, name });
+    showAccessResult({ type, id, name: getMemberName(id) });
     clearInput(input);
   } catch (err) {
     showMessage(err.message || "처리에 실패했습니다.", "error");
@@ -498,6 +566,8 @@ const initScannerPage = async () => {
   const cancelButton = $("loc-cancel");
 
   if (!input || !button || !dialog || !dialogForm || !select || !cancelButton) return;
+
+  void loadMembers().catch(() => null);
 
   input.addEventListener("keydown", event => {
     if (event.key !== "Enter") return;
@@ -554,9 +624,7 @@ const initScannerPage = async () => {
   });
 
   try {
-    const locationData = await fetchLocations();
-
-    setConfiguredLocations(locationData);
+    await loadLocations();
     populateLocationSelect(configuredLocations);
 
     if (configuredLocations.length === 0) {
@@ -600,6 +668,7 @@ const initBoardPage = () => {
   if (searchInput) searchInput.addEventListener("input", () => renderLogs());
   if (sortInput) sortInput.addEventListener("change", () => renderLogs());
 
+  void loadMembers().catch(() => null);
   setBoardView("logs");
   void refreshActiveBoardView();
   startBoardPolling();

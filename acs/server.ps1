@@ -11,6 +11,8 @@ function Get-ContentType {
         ".html" { return "text/html; charset=utf-8" }
         ".js" { return "application/javascript; charset=utf-8" }
         ".css" { return "text/css; charset=utf-8" }
+        ".json" { return "application/json; charset=utf-8" }
+        ".csv" { return "text/csv; charset=utf-8" }
         default { return "application/octet-stream" }
     }
 }
@@ -144,50 +146,17 @@ function Import-Members {
     )
 
     $items = Get-Content -LiteralPath $ListPath -Raw | ConvertFrom-Json
-    $members = New-Object System.Collections.ArrayList
     $allowedIds = @{}
-    $memberById = @{}
 
     foreach ($item in @($items)) {
         $id = Get-StringField -Object $item -Name "id"
         if ([string]::IsNullOrWhiteSpace($id)) { continue }
-
-        $member = [pscustomobject]@{
-            id = $id
-            name = Get-StringField -Object $item -Name "name"
-            unit = Get-StringField -Object $item -Name "unit"
-        }
-
-        [void]$members.Add($member)
         $allowedIds[$id] = $true
-        $memberById[$id] = $member
     }
 
     return @{
-        Members = @($members)
         AllowedIds = $allowedIds
-        MemberById = $memberById
     }
-}
-
-function Import-Locations {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$LocationPath
-    )
-
-    $items = Get-Content -LiteralPath $LocationPath -Raw | ConvertFrom-Json
-    $locations = New-Object System.Collections.ArrayList
-
-    foreach ($item in @($items)) {
-        $location = Get-StringField -Object $item -Name "location"
-        if ([string]::IsNullOrWhiteSpace($location)) { continue }
-        [void]$locations.Add([pscustomobject]@{
-            location = $location
-        })
-    }
-
-    return @($locations)
 }
 
 function New-AccessLogFile {
@@ -240,101 +209,6 @@ function Add-AccessRecord {
     [System.IO.File]::AppendAllText($LogPath, $line + [Environment]::NewLine, $encoding)
 }
 
-function Get-KstDateString {
-    param(
-        [Parameter(Mandatory = $true)]
-        [System.DateTimeOffset]$Value
-    )
-
-    return $Value.ToOffset([System.TimeSpan]::FromHours(9)).ToString("yyyy-MM-dd")
-}
-
-function Get-CurrentKstDateString {
-    return (Get-KstDateString -Value [System.DateTimeOffset]::UtcNow)
-}
-
-function Test-LogDay {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$Day
-    )
-
-    $value = [datetime]::MinValue
-    return [datetime]::TryParseExact(
-        $Day,
-        "yyyy-MM-dd",
-        [System.Globalization.CultureInfo]::InvariantCulture,
-        [System.Globalization.DateTimeStyles]::None,
-        [ref]$value
-    )
-}
-
-function ConvertTo-AccessLogRecord {
-    param(
-        [Parameter(Mandatory = $true)]
-        [object]$Row
-    )
-
-    if (-not (Test-AccessRecordRow -Row $Row)) {
-        return $null
-    }
-
-    $timeText = [string]$Row.time
-    if ([string]::IsNullOrWhiteSpace($timeText)) {
-        return $null
-    }
-
-    try {
-        $time = [System.DateTimeOffset]::Parse(
-            $timeText,
-            [System.Globalization.CultureInfo]::InvariantCulture,
-            [System.Globalization.DateTimeStyles]::RoundtripKind
-        )
-    } catch {
-        return $null
-    }
-
-    return [pscustomobject]@{
-        time = $timeText
-        type = [string]$Row.type
-        location = [string]$Row.location
-        id = [string]$Row.id
-        kstDay = Get-KstDateString -Value $time
-    }
-}
-
-function Get-AccessLogsByDay {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$LogPath,
-
-        [Parameter(Mandatory = $true)]
-        [string]$Day
-    )
-
-    if (-not (Test-Path -LiteralPath $LogPath)) {
-        return @()
-    }
-
-    $items = New-Object System.Collections.ArrayList
-    $rows = Import-Csv -LiteralPath $LogPath
-
-    foreach ($row in $rows) {
-        $record = ConvertTo-AccessLogRecord -Row $row
-        if ($null -eq $record -or $record.kstDay -ne $Day) {
-            continue
-        }
-
-        [void]$items.Add([pscustomobject]@{
-            time = $record.time
-            type = $record.type
-            location = $record.location
-            id = $record.id
-        })
-    }
-
-    return @($items)
-}
 
 function Set-CurrentStatus {
     param(
@@ -477,6 +351,9 @@ function Invoke-StaticResourceRoute {
         "/board.html" { "board.html" }
         "/script.js" { "script.js" }
         "/style.css" { "style.css" }
+        "/list.json" { "list.json" }
+        "/location.json" { "location.json" }
+        "/logs/access-log.csv" { "logs/access-log.csv" }
         default { $null }
     }
 
@@ -533,59 +410,6 @@ function Invoke-StatusRoute {
     return $true
 }
 
-function Invoke-LogsRoute {
-    param(
-        [Parameter(Mandatory = $true)]
-        [System.Net.HttpListenerRequest]$Request,
-
-        [Parameter(Mandatory = $true)]
-        [System.Net.HttpListenerResponse]$Response,
-
-        [Parameter(Mandatory = $true)]
-        [string]$LogPath
-    )
-
-    $day = [string]$Request.QueryString["day"]
-    if ([string]::IsNullOrWhiteSpace($day)) {
-        $day = Get-CurrentKstDateString
-    }
-
-    if (-not (Test-LogDay -Day $day)) {
-        Send-RejectedResponse -Response $Response -Message "day must be yyyy-mm-dd"
-        return $true
-    }
-
-    $items = @(Get-AccessLogsByDay -LogPath $LogPath -Day $day)
-    Send-JsonResponse -Response $Response -Payload $items -AsArray
-    return $true
-}
-
-function Invoke-LocationsRoute {
-    param(
-        [Parameter(Mandatory = $true)]
-        [System.Net.HttpListenerResponse]$Response,
-
-        [Parameter(Mandatory = $true)]
-        [object[]]$Locations
-    )
-
-    Send-JsonResponse -Response $Response -Payload @($Locations) -AsArray
-    return $true
-}
-
-function Invoke-MembersRoute {
-    param(
-        [Parameter(Mandatory = $true)]
-        [System.Net.HttpListenerResponse]$Response,
-
-        [Parameter(Mandatory = $true)]
-        [object[]]$Members
-    )
-
-    Send-JsonResponse -Response $Response -Payload @($Members) -AsArray
-    return $true
-}
- 
 function Invoke-AccessRoute {
     param(
         [Parameter(Mandatory = $true)]
@@ -601,10 +425,7 @@ function Invoke-AccessRoute {
         [string]$LogPath,
 
         [Parameter(Mandatory = $true)]
-        [hashtable]$AllowedIds,
-
-        [Parameter(Mandatory = $true)]
-        [hashtable]$MemberById
+        [hashtable]$AllowedIds
     )
 
     $payload = Read-AccessPayload -Request $Request -Response $Response
@@ -637,12 +458,8 @@ function Invoke-AccessRoute {
         return $true
     }
 
-    $member = if ($MemberById.ContainsKey($id)) { $MemberById[$id] } else { $null }
-
     Send-JsonResponse -Response $Response -Payload @{
         status = "logged"
-        id = $id
-        name = Get-StringField -Object $member -Name "name"
     }
     return $true
 }
@@ -659,16 +476,7 @@ function Invoke-ApiRoute {
         [string]$LogPath,
 
         [Parameter(Mandatory = $true)]
-        [hashtable]$AllowedIds,
-
-        [Parameter(Mandatory = $true)]
-        [hashtable]$MemberById,
-
-        [Parameter(Mandatory = $true)]
-        [object[]]$Members,
-
-        [Parameter(Mandatory = $true)]
-        [object[]]$Locations
+        [hashtable]$AllowedIds
     )
 
     $request = $Context.Request
@@ -677,10 +485,7 @@ function Invoke-ApiRoute {
     $method = $request.HttpMethod.ToUpperInvariant()
 
     if ($method -eq "GET" -and $path -eq "/status") { return (Invoke-StatusRoute -Response $response -State $State -Location ([string]$request.QueryString["location"])) }
-    if ($method -eq "GET" -and $path -eq "/members") { return (Invoke-MembersRoute -Response $response -Members $Members) }
-    if ($method -eq "GET" -and $path -eq "/locations") { return (Invoke-LocationsRoute -Response $response -Locations $Locations) }
-    if ($method -eq "GET" -and $path -eq "/logs") { return (Invoke-LogsRoute -Request $request -Response $response -LogPath $LogPath) }
-    if ($method -eq "POST" -and $path -eq "/access") { return (Invoke-AccessRoute -Request $request -Response $response -State $State -LogPath $LogPath -AllowedIds $AllowedIds -MemberById $MemberById) }
+    if ($method -eq "POST" -and $path -eq "/access") { return (Invoke-AccessRoute -Request $request -Response $response -State $State -LogPath $LogPath -AllowedIds $AllowedIds) }
 
     return $false
 }
@@ -700,20 +505,11 @@ function Invoke-Request {
         [string]$LogPath,
 
         [Parameter(Mandatory = $true)]
-        [hashtable]$AllowedIds,
-
-        [Parameter(Mandatory = $true)]
-        [hashtable]$MemberById,
-
-        [Parameter(Mandatory = $true)]
-        [object[]]$Members,
-
-        [Parameter(Mandatory = $true)]
-        [object[]]$Locations
+        [hashtable]$AllowedIds
     )
 
     if (Invoke-StaticResourceRoute -Context $Context -AppRoot $AppRoot) { return }
-    if (Invoke-ApiRoute -Context $Context -State $State -LogPath $LogPath -AllowedIds $AllowedIds -MemberById $MemberById -Members $Members -Locations $Locations) { return }
+    if (Invoke-ApiRoute -Context $Context -State $State -LogPath $LogPath -AllowedIds $AllowedIds) { return }
     Send-TextResponse -Response $Context.Response -Text "Not Found" -StatusCode 404
 }
 
@@ -721,12 +517,8 @@ function Start-AcsServer {
     $appRoot = if ([string]::IsNullOrWhiteSpace($PSScriptRoot)) { (Get-Location).Path } else { $PSScriptRoot }
     $logPath = Join-Path $appRoot "logs/access-log.csv"
     $listPath = Join-Path $appRoot "list.json"
-    $locationPath = Join-Path $appRoot "location.json"
     $membersData = Import-Members -ListPath $listPath
-    $members = @($membersData.Members)
     $allowedIds = $membersData.AllowedIds
-    $memberById = $membersData.MemberById
-    $locations = @(Import-Locations -LocationPath $locationPath)
 
     $state = @{
         Current = @{}
@@ -743,7 +535,6 @@ function Start-AcsServer {
     Write-Host ("App root: {0}" -f $appRoot)
     Write-Host ("Log path: {0}" -f $logPath)
     Write-Host ("List path: {0}" -f $listPath)
-    Write-Host ("Location path: {0}" -f $locationPath)
 
     try {
         $listener.Start()
@@ -752,7 +543,7 @@ function Start-AcsServer {
             $context = $listener.GetContext()
 
             try {
-                Invoke-Request -Context $context -AppRoot $appRoot -State $state -LogPath $logPath -AllowedIds $allowedIds -MemberById $memberById -Members $members -Locations $locations
+                Invoke-Request -Context $context -AppRoot $appRoot -State $state -LogPath $logPath -AllowedIds $allowedIds
             } catch {
                 Send-InternalServerError -Response $context.Response
             }

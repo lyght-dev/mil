@@ -3,6 +3,31 @@
 ## 2026-03-11
 
 ### 작업 요약
+- `acs/server.ps1`에서 동적 조회 API를 줄이고, 서버 책임을 `POST /access`, `GET /status`, 정적 파일 서빙으로 축소함.
+  - `GET /members`, `GET /locations`, `GET /logs`를 제거함
+  - `list.json`, `location.json`, `logs/access-log.csv`를 정적 파일로 직접 서빙하도록 확장함
+- `acs/server.ps1`의 `POST /access` 성공 응답을 다시 `{status:"logged"}`로 단순화함.
+- `acs/script.js`를 수정해 FE가 `/list.json`, `/location.json`, `/logs/access-log.csv`를 직접 읽도록 변경함.
+  - 로그 날짜 필터링, 검색, 정렬은 전부 브라우저에서 처리함
+  - 스캐너 성공 메시지 이름은 서버 응답이 아니라 `list.json` 캐시에서 가져오도록 바꿈
+- `acs/SPEC.md`를 현재 계약에 맞게 전면 정리함.
+  - 정적 리소스 기반 조회 구조와 최소 API 계약만 남김
+
+### 다음 세션 인계 포인트
+- 현재 서버 API는 `POST /access`, `GET /status`만 남는다.
+- FE 데이터 소스는 `/list.json`, `/location.json`, `/logs/access-log.csv`다.
+- 현황판 로그 뷰는 더 이상 서버에 날짜별 로그 API를 호출하지 않는다.
+- `POST /access` 성공 응답에는 더 이상 `id`, `name`이 없다.
+- 반영 확인 시에는 `acs/server.ps1` 재시작이 필요하다.
+
+### 검증 내역
+- `node --check /workspaces/mil/acs/script.js`
+- `pwsh -NoLogo -NoProfile -Command "[void][scriptblock]::Create((Get-Content -LiteralPath '/workspaces/mil/acs/server.ps1' -Raw)); 'PARSE_OK'"`
+- `curl -sS http://127.0.0.1:8899/location.json`
+- `curl -sS http://127.0.0.1:8899/list.json`
+- `curl -sS http://127.0.0.1:8899/logs/access-log.csv`
+
+### 작업 요약
 - `acs/server.ps1`에 `GET /members`를 추가해 `list.json`의 `id,name,unit` 명단을 FE로 그대로 반환하도록 확장함.
 - `acs/board.html`, `acs/script.js`를 수정해 현황판 카드에 이름을 함께 표시하고, 로그 표에 이름 컬럼과 이름 검색을 추가함.
 - `acs/server.ps1`의 `POST /access` 성공 응답에 `name`을 추가함.
