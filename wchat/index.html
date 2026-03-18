@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Simple WebSocket Chat</title>
+    <style>
+        body {
+            font-family: Arial;
+            margin: 20px;
+        }
+        #log {
+            border: 1px solid #ccc;
+            height: 300px;
+            overflow-y: auto;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        #msg {
+            width: 80%;
+            padding: 8px;
+        }
+        button {
+            padding: 8px;
+        }
+    </style>
+</head>
+<body>
+
+<h2>WebSocket Chat (localhost:8080)</h2>
+
+<div id="log"></div>
+
+<input id="msg" type="text" placeholder="메시지 입력..." />
+<button onclick="sendMsg()">전송</button>
+
+<script>
+    const log = document.getElementById("log");
+    const input = document.getElementById("msg");
+
+    function addLog(text) {
+        const div = document.createElement("div");
+        div.textContent = text;
+        log.appendChild(div);
+        log.scrollTop = log.scrollHeight;
+    }
+
+    // WebSocket 연결
+    const ws = new WebSocket("ws://localhost:8080/ws/");
+
+    ws.onopen = () => {
+        addLog("연결됨");
+    };
+
+    ws.onmessage = (event) => {
+        addLog("받음: " + event.data);
+    };
+
+    ws.onclose = () => {
+        addLog("연결 종료");
+    };
+
+    ws.onerror = (err) => {
+        addLog("에러 발생");
+        console.error(err);
+    };
+
+    function sendMsg() {
+        const text = input.value.trim();
+        if (!text) return;
+
+        ws.send(text);
+        addLog("보냄: " + text);
+
+        input.value = "";
+    }
+
+    input.addEventListener("keydown", function(e) {
+        if (e.key === "Enter") {
+            sendMsg();
+        }
+    });
+</script>
+
+</body>
+</html>
