@@ -2,6 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Simple WebSocket Chat</title>
     <style>
         body {
@@ -26,7 +27,7 @@
 </head>
 <body>
 
-<h2>WebSocket Chat (localhost:8080)</h2>
+<h2>WebSocket Chat</h2>
 
 <div id="log"></div>
 
@@ -44,8 +45,12 @@
         log.scrollTop = log.scrollHeight;
     }
 
-    // WebSocket 연결
-    const ws = new WebSocket("ws://localhost:8080/ws/");
+    function socketUrl() {
+        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        return protocol + "//" + window.location.host + "/ws";
+    }
+
+    const ws = new WebSocket(socketUrl());
 
     ws.onopen = () => {
         addLog("연결됨");
