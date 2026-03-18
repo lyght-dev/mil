@@ -1,234 +1,203 @@
-Set-StrictMode -Version Latest
-$ErrorActionPreference = "Stop"
-
 Add-Type -AssemblyName System.Net.Http
 
-function Send-BytesResponse {
-    param(
-        [Parameter(Mandatory = $true)]
-        [System.Net.HttpListenerResponse]$Response,
+$listener = New-Object System.Net.HttpListener
+$listener.Prefixes.Add("http://+:8080/")
+$listener.Start()
 
-        [Parameter(Mandatory = $true)]
-        [byte[]]$Bytes,
-
-        [Parameter(Mandatory = $true)]
-        [string]$ContentType,
-
-        [int]$StatusCode = 200
-    )
-
-    $Response.StatusCode = $StatusCode
-    $Response.ContentType = $ContentType
-    $Response.OutputStream.Write($Bytes, 0, $Bytes.Length)
-    $Response.OutputStream.Close()
-}
-
-function Send-TextResponse {
-    param(
-        [Parameter(Mandatory = $true)]
-        [System.Net.HttpListenerResponse]$Response,
-
-        [Parameter(Mandatory = $true)]
-        [string]$Text,
-
-        [string]$ContentType = "text/plain; charset=utf-8",
-
-        [int]$StatusCode = 200
-    )
-
-    $bytes = [System.Text.Encoding]::UTF8.GetBytes($Text)
-    Send-BytesResponse -Response $Response -Bytes $bytes -ContentType $ContentType -StatusCode $StatusCode
-}
-
-function Broadcast {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$Message,
-
-        [Parameter(Mandatory = $true)]
-        [System.Collections.IList]$Clients,
-
-        [Parameter(Mandatory = $true)]
-        [object]$Lock
-    )
-
-    $bytes = [System.Text.Encoding]::UTF8.GetBytes($Message)
-    $segment = [System.ArraySegment[byte]]::new($bytes, 0, $bytes.Length)
-
-    [System.Threading.Monitor]::Enter($Lock)
-    try {
-        foreach ($client in @($Clients.ToArray())) {
-            if ($client.State -ne [System.Net.WebSockets.WebSocketState]::Open) {
-                continue
-            }
-
-            try {
-                $client.SendAsync(
-                    $segment,
-                    [System.Net.WebSockets.WebSocketMessageType]::Text,
-                    $true,
-                    [System.Threading.CancellationToken]::None
-                ).GetAwaiter().GetResult()
-            } catch {
-            }
-        }
-    } finally {
-        [System.Threading.Monitor]::Exit($Lock)
-    }
-}
-
-function Invoke-ClientHandler {
-    param(
-        [Parameter(Mandatory = $true)]
-        [System.Net.WebSockets.WebSocket]$Socket,
-
-        [Parameter(Mandatory = $true)]
-        [System.Collections.IList]$Clients,
-
-        [Parameter(Mandatory = $true)]
-        [object]$Lock
-    )
-
-    $buffer = New-Object byte[] 1024
-
-    try {
-        while ($Socket.State -eq [System.Net.WebSockets.WebSocketState]::Open) {
-            $segment = [System.ArraySegment[byte]]::new($buffer, 0, $buffer.Length)
-            $result = $Socket.ReceiveAsync(
-                $segment,
-                [System.Threading.CancellationToken]::None
-            ).GetAwaiter().GetResult()
-
-            if ($result.MessageType -eq [System.Net.WebSockets.WebSocketMessageType]::Close) {
-                $Socket.CloseAsync(
-                    [System.Net.WebSockets.WebSocketCloseStatus]::NormalClosure,
-                    "Closing",
-                    [System.Threading.CancellationToken]::None
-                ).GetAwaiter().GetResult()
-                break
-            }
-
-            $message = [System.Text.Encoding]::UTF8.GetString($buffer, 0, $result.Count)
-            Write-Host ("Received: {0}" -f $message)
-            Broadcast -Message $message -Clients $Clients -Lock $Lock
-        }
-    } catch {
-    } finally {
-        [System.Threading.Monitor]::Enter($Lock)
-        try {
-            [void]$Clients.Remove($Socket)
-        } finally {
-            [System.Threading.Monitor]::Exit($Lock)
-        }
-
-        Write-Host "Client disconnected"
-    }
-}
+Write-Host "Web server running at http://localhost:8080/"
+Write-Host "Open / in a browser. WebSocket endpoint is /ws"
 
 $appRoot = $PSScriptRoot
 if ([string]::IsNullOrWhiteSpace($appRoot)) {
     $appRoot = (Get-Location).Path
 }
 
-$listener = [System.Net.HttpListener]::new()
-$listener.Prefixes.Add("http://+:8080/")
+$workerModulePath = Join-Path $appRoot "wchat-worker.psm1"
+$clients = New-Object System.Collections.ArrayList
+$lock = New-Object Object
+$handlers = New-Object System.Collections.ArrayList
 
-$clients = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
-$lock = [object]::new()
-$handlers = [System.Collections.ArrayList]::new()
+function SendHtml($response) {
+    $filePath = Join-Path $appRoot "index.html"
+    $bytes = [System.IO.File]::ReadAllBytes($filePath)
+    $response.StatusCode = 200
+    $response.ContentType = "text/html; charset=utf-8"
+    $response.OutputStream.Write($bytes, 0, $bytes.Length)
+    $response.OutputStream.Close()
+}
 
-$iss = [System.Management.Automation.Runspaces.InitialSessionState]::CreateDefault()
-$iss.Commands.Add((New-Object System.Management.Automation.Runspaces.SessionStateFunctionEntry "Broadcast", (Get-Item function:Broadcast).ScriptBlock.ToString()))
-$iss.Commands.Add((New-Object System.Management.Automation.Runspaces.SessionStateFunctionEntry "Invoke-ClientHandler", (Get-Item function:Invoke-ClientHandler).ScriptBlock.ToString()))
-$runspacePool = [System.Management.Automation.Runspaces.RunspaceFactory]::CreateRunspacePool(1, 8, $iss, $Host)
-$runspacePool.Open()
+function SendText($response, $statusCode, $text) {
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($text)
+    $response.StatusCode = $statusCode
+    $response.ContentType = "text/plain; charset=utf-8"
+    $response.OutputStream.Write($bytes, 0, $bytes.Length)
+    $response.OutputStream.Close()
+}
 
-$listener.Start()
+function RemoveClient($socket) {
+    [System.Threading.Monitor]::Enter($lock)
+    try { [void]$clients.Remove($socket) }
+    finally { [System.Threading.Monitor]::Exit($lock) }
+}
 
-Write-Host "Web server running at http://localhost:8080/"
-Write-Host "Open / in a browser. WebSocket endpoint is /ws"
+function CloseSocket($socket) {
+    try {
+        if ($socket.State -eq [System.Net.WebSockets.WebSocketState]::Open -or $socket.State -eq [System.Net.WebSockets.WebSocketState]::CloseReceived) {
+            $socket.CloseAsync(
+                [System.Net.WebSockets.WebSocketCloseStatus]::NormalClosure,
+                "Closing",
+                [Threading.CancellationToken]::None
+            ).Wait()
+        }
+    }
+    catch { }
+}
 
-$nullString = [System.Management.Automation.Language.NullString]::Value
+function CleanupHandlers() {
+    foreach ($entry in @($handlers.ToArray())) {
+        if (-not $entry.Handle.IsCompleted) {
+            continue
+        }
+
+        try {
+            $null = $entry.PowerShell.EndInvoke($entry.Handle)
+        }
+        catch {
+            Write-Host ("Client handler failed: {0}" -f $_.Exception.Message)
+        }
+        finally {
+            try {  $entry.PowerShell.Dispose() }
+            catch { }
+
+            try { $entry.Runspace.Close() }
+            catch { }
+
+            try { $entry.Runspace.Dispose() }
+            catch { }
+
+            [void]$handlers.Remove($entry)
+        }
+    }
+}
+
+function StopHandlers() {
+    foreach ($entry in @($handlers.ToArray())) {
+        try {
+            if (-not $entry.Handle.IsCompleted) { $entry.PowerShell.Stop() }
+        }
+        catch { }
+
+        try { $null = $entry.PowerShell.EndInvoke($entry.Handle) }
+        catch {
+            if ($_.Exception.Message -notlike '*The pipeline has been stopped.*') {
+                Write-Host ("Client handler stop failed: {0}" -f $_.Exception.Message)
+            }
+        }
+        finally {
+            try { $entry.PowerShell.Dispose() }
+            catch { }
+
+            try { $entry.Runspace.Close() }
+            catch { }
+
+            try { $entry.Runspace.Dispose() }
+            catch { }
+        }
+    }
+}
+
+function StartClientHandler($socket) {
+    $iss = [System.Management.Automation.Runspaces.InitialSessionState]::CreateDefault()
+    $iss.ImportPSModule(@($workerModulePath))
+
+    $runspace = [System.Management.Automation.Runspaces.RunspaceFactory]::CreateRunspace($Host, $iss)
+    $runspace.Open()
+
+    $ps = [System.Management.Automation.PowerShell]::Create()
+    try {
+        $ps.Runspace = $runspace
+        $null = $ps.AddCommand("Invoke-WChatClientHandler").AddArgument($socket).AddArgument($clients).AddArgument($lock)
+        $handle = $ps.BeginInvoke()
+
+        [void]$handlers.Add([pscustomobject]@{
+            Runspace = $runspace
+            PowerShell = $ps
+            Handle = $handle
+            Socket = $socket
+        })
+    }
+    catch {
+        try { $ps.Dispose() }
+        catch { }
+
+        try { $runspace.Close() }
+        catch { }
+
+        try { $runspace.Dispose() }
+        catch { }
+
+        throw
+    }
+}
 
 try {
     while ($true) {
+        CleanupHandlers
+
         $context = $listener.GetContext()
         $path = $context.Request.Url.AbsolutePath
         $method = $context.Request.HttpMethod.ToUpperInvariant()
 
-        if ($path -eq "/ws" -or $path -eq "/ws/") {
-            if (-not $context.Request.IsWebSocketRequest) {
-                Send-TextResponse -Response $context.Response -Text "WebSocket required" -StatusCode 400
-                continue
+        if ($method -eq "GET" -and ($path -eq "/" -or $path -eq "/index.html")) {
+            SendHtml $context.Response
+            continue
+        }
+
+        if ($path -ne "/ws" -and $path -ne "/ws/") {
+            SendText $context.Response 404 "Not Found"
+            continue
+        }
+
+        if (-not $context.Request.IsWebSocketRequest) {
+            SendText $context.Response 400 "WebSocket required"
+            continue
+        }
+
+        try {
+            $wsContext = $context.AcceptWebSocketAsync([System.Management.Automation.Language.NullString]::Value).Result
+            $ws = $wsContext.WebSocket
+
+            [System.Threading.Monitor]::Enter($lock)
+            try {
+                $clients.Add($ws) | Out-Null
+                Write-Host "Client connected: $($clients.Count)"
+            }
+            finally {
+                [System.Threading.Monitor]::Exit($lock)
             }
 
             try {
-                $wsContext = $context.AcceptWebSocketAsync($nullString).GetAwaiter().GetResult()
-                $socket = $wsContext.WebSocket
-
-                [System.Threading.Monitor]::Enter($lock)
-                try {
-                    [void]$clients.Add($socket)
-                    Write-Host ("Client connected: {0}" -f $clients.Count)
-                } finally {
-                    [System.Threading.Monitor]::Exit($lock)
-                }
-
-                $ps = [powershell]::Create()
-                $ps.RunspacePool = $runspacePool
-                $null = $ps.AddCommand("Invoke-ClientHandler").AddArgument($socket).AddArgument($clients).AddArgument($lock)
-                $null = $ps.BeginInvoke()
-                [void]$handlers.Add($ps)
-            } catch {
-                Write-Host ("Connection error: {0}" -f $_.Exception.Message)
-                if ($context.Response.OutputStream.CanWrite) {
-                    Send-TextResponse -Response $context.Response -Text "WebSocket accept failed" -StatusCode 500
-                }
+                StartClientHandler $ws
             }
-
-            continue
-        }
-
-        if ($method -eq "GET" -and ($path -eq "/" -or $path -eq "/index.html")) {
-            $filePath = Join-Path $appRoot "index.html"
-            $bytes = [System.IO.File]::ReadAllBytes($filePath)
-            Send-BytesResponse -Response $context.Response -Bytes $bytes -ContentType "text/html; charset=utf-8"
-            continue
-        }
-
-        Send-TextResponse -Response $context.Response -Text "Not Found" -StatusCode 404
-    }
-} finally {
-    foreach ($handler in @($handlers)) {
-        try {
-            $handler.Stop()
-        } catch {
-        }
-
-        try {
-            $handler.Dispose()
-        } catch {
-        }
-    }
-
-    foreach ($client in @($clients.ToArray())) {
-        try {
-            if ($client.State -eq [System.Net.WebSockets.WebSocketState]::Open -or $client.State -eq [System.Net.WebSockets.WebSocketState]::CloseReceived) {
-                $client.CloseAsync(
-                    [System.Net.WebSockets.WebSocketCloseStatus]::NormalClosure,
-                    "Closing",
-                    [System.Threading.CancellationToken]::None
-                ).GetAwaiter().GetResult()
+            catch {
+                Write-Host ("Client handler start failed: {0}" -f $_.Exception.Message)
+                RemoveClient $ws
+                CloseSocket $ws
             }
-        } catch {
+        }
+        catch {
+            Write-Host "Connection error: $_"
         }
     }
+}
+finally {
+    StopHandlers
 
-    if ($listener.IsListening) {
-        $listener.Stop()
+    foreach ($socket in @($clients.ToArray())) {
+        CloseSocket $socket
     }
+
+    if ($listener.IsListening) { $listener.Stop() }
 
     $listener.Close()
-    $runspacePool.Close()
-    $runspacePool.Dispose()
 }

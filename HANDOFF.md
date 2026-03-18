@@ -5,11 +5,14 @@
 ### 작업 요약
 - `wchat/server.ps1`를 수정해 `http://+:8080/`에서 `index.html`을 직접 서빙하고, 같은 서버에서 `/ws` WebSocket 업그레이드를 처리하게 함.
 - `wchat/index.html`를 수정해 하드코딩된 `ws://localhost:8080/ws/` 대신 현재 페이지의 `location.protocol`과 `location.host`를 기준으로 `ws://` 또는 `wss://`를 계산하도록 변경함.
+- `wchat/server.ps1`의 WebSocket 수신 처리를 `Task.Run`에서 클라이언트별 전용 runspace 실행 구조로 변경함.
+- `wchat/wchat-worker.psm1`를 추가해 runspace worker 코드를 별도 모듈로 분리하고, `ScriptBlock.ToString()` 없이 `ImportPSModule + AddCommand`로 로드하게 함.
+- handler 정리는 `BeginInvoke`/`EndInvoke`/`Dispose`를 명시적으로 감싸는 방식으로 정리함.
 
 ### 검증 메모
 - `curl http://127.0.0.1:8080/`로 HTML 서빙 확인.
 - `curl http://127.0.0.1:8080/ws`로 일반 HTTP 요청 시 400 응답 확인.
-- 로컬 WebSocket 클라이언트로 `hello` 전송 후 동일 메시지 수신까지 확인.
+- 로컬 WebSocket 클라이언트로 `hello` 전송 후 동일 메시지 수신까지 재확인 필요.
 
 ## 2026-03-11
 
