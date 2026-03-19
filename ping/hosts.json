@@ -6,7 +6,10 @@
 {
   "name": "Google DNS",
   "host": "8.8.8.8"
+},
+{
+  "name": "Codespaces",
+  "host": "congenial-enigma-wqj5vpgxr6r2gg44-9000.app.github.dev"
 }
-
 ]
 
