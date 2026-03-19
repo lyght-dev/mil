@@ -65,7 +65,7 @@ function renderRows(records) {
 }
 
 function renderRow(record, renderedAt) {
-  const destination = record?.dest ?? "—";
+  const destination = record?.destination ?? "—";
   const rtt = record?.rtt == null ? "—" : escapeHtml(String(record.rtt));
 
   return `
@@ -73,7 +73,7 @@ function renderRow(record, renderedAt) {
       <td class="mono">${escapeHtml(destination)}</td>
       <td>${renderBadge(record?.status)}</td>
       <td class="num">${rtt}</td>
-      <td>${escapeHtml(formatDateTime(record?.successedAt))}</td>
+      <td>${escapeHtml(formatDateTime(record?.succeededAt))}</td>
       <td>${renderedAt}</td>
     </tr>`;
 }
