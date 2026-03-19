@@ -10,7 +10,7 @@ PowerShell 기반의 백그라운드 서버를 구현한다.
 
 * 서버는 `config.json`의 hosts 목록에 대해 **10초마다 ping**을 수행한다.
 * 각 host에 대해 **최신 ping 결과 1건만 메모리에 유지**한다.
-* 로컬에서 `file://`로 실행되는 프론트엔드(`index.html`)는 **10초마다 fetch polling**으로 서버에서 최신 결과를 가져와 표(Table)를 갱신한다.
+* 서버가 제공하는 정적 프론트엔드(`index.html`, `script.js`, `style.css`)는 **10초마다 fetch polling**으로 같은 서버의 최신 결과를 가져와 표(Table)를 갱신한다.
 * FE 디자인은 **표 중심**이며, **Confluence(Atlassian) 스타일**(밝은 톤, 카드/패널 느낌, 정돈된 표, 은은한 경계선, 상태 배지)로 구현한다.
 
 ---
@@ -124,7 +124,7 @@ GET /ping?host={hostname}
 
 #### CORS
 
-`file://`에서 호출 가능해야 하므로 CORS 헤더 필수:
+프론트와 API를 같은 서버에서 함께 제공하면 CORS는 필수가 아니다. 다만 외부 클라이언트 호출까지 허용하려면 아래 헤더를 유지할 수 있다:
 
 ```
 Access-Control-Allow-Origin: *
@@ -185,7 +185,7 @@ Access-Control-Allow-Headers: Content-Type
 
 * 기본 엔드포인트:
 
-  * `GET http://localhost:{port}/pings`
+  * 현재 페이지와 같은 origin의 `GET /pings`
 * 동작:
 
   * 페이지 로드 즉시 1회 fetch 후 렌더

@@ -1,5 +1,17 @@
 # Handoff
 
+## 2026-03-19
+
+- 프런트 실행 기준 변경:
+  - `script.js`의 `/pings` 호출 기준을 `file:// + localhost:{port}`에서 "현재 페이지 origin 기준 same-origin `/pings`"로 변경.
+  - `?port=` 처리와 `Open this page with file://` 가드를 제거.
+  - `ping/SPEC.md`도 동일 기준으로 수정해, 프런트는 서버가 제공하는 static file이라는 전제로 정리.
+
+- `script.js` 구조 정리:
+  - 즉시실행 함수(IIFE) 내부에 있던 프런트 로직을 top-level 함수 선언(`query`, `formatDateTime`, `renderRows`, `fetchAndRender`, `initialize` 등)으로 이동.
+  - 동작은 유지하고, `q/el/rf/ar/fs/lf` 같은 과도한 축약을 `elements`, `refreshButton`, `autoRefreshToggle`, `fetchStatus`, `lastFetch` 수준으로 완화.
+  - same-origin `/pings` 기준의 엔드포인트, 초기 fetch, 10초 polling, 수동 refresh, 에러 표시 흐름은 유지.
+
 ## 2026-02-26
 
 - Fixed worker silent-stop issue in `server.ps1` logging:
