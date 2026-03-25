@@ -1,0 +1,45 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+    background: linear-gradient(180deg, #9dd2ff 0%, #dff2ff 60%, #f4f9ff 100%);
+    color: #1a2a33;
+}
+
+.app {
+    width: min(980px, 100%);
+    margin: 0 auto;
+    padding: 16px 12px 24px;
+}
+
+.hud h1 {
+    margin: 0 0 10px;
+    font-size: 1.4rem;
+}
+
+.status {
+    margin: 4px 0;
+    font-size: 0.95rem;
+}
+
+#game {
+    width: 100%;
+    border: 2px solid #1f3a4a;
+    border-radius: 10px;
+    background: #8dccff;
+    box-shadow: 0 8px 20px rgba(10, 40, 65, 0.22);
+}
+
+.help {
+    margin-top: 10px;
+    font-size: 0.9rem;
+    color: #2d4c5f;
+}
+
+.help p {
+    margin: 4px 0;
+}

@@ -1,5 +1,53 @@
 # HANDOFF
 
+## 2026-03-25
+
+### 작업 요약
+- `volleyball/`에 2인 온라인 배구 MVP를 신규 구현함.
+- `volleyball/server.ps1`를 추가해 `http://+:8090/`에서 정적 파일과 `/ws` WebSocket을 함께 처리하도록 구성함.
+- 서버는 단일 룸/최대 2명(`left`, `right`)만 허용하고, 3번째 접속은 `room_full` 이벤트 후 종료하도록 처리함.
+- 서버 권한 모델로 물리 시뮬레이션(이동/점프/중력/벽/네트/플레이어 충돌/바닥 판정)을 30Hz 틱에서 계산하도록 구현함.
+- 바닥 접촉 시 점수 없이 `round_reset` 이벤트를 보내고 즉시 라운드를 리셋하도록 구성함.
+- `volleyball/volleyball-worker.psm1`를 추가해 클라이언트 입력 수신(runspace handler)과 연결 해제 정리를 분리함.
+- `volleyball/index.html`, `volleyball/script.js`, `volleyball/style.css`를 추가해 캔버스 기반 기본 도형 렌더와 키보드 입력 전송을 구현함.
+- `volleyball/SPEC.md`를 신설해 MVP 계약(단일 룸, 서버 권한, 무점수 랠리)을 문서화함.
+- 추가 수정: `Client disconnected` 직후 간헐적으로 발생한 `Move-PlayerBody` 입력 타입 예외(`System.Object[] -> Hashtable`)를 수정함.
+  - `Move-PlayerBody`의 입력 타입 강제를 제거하고 `Get-InputFlag`로 안전하게 불리언을 해석하도록 변경함.
+  - 틱 루프에서 플레이어/입력 참조를 점(`.`) 표기 대신 키 인덱서(`["left"]["input"]`)로 고정해 배열 해석 가능성을 줄임.
+- 추가 수정: 입력/전송 정책을 재조정해 트래픽/조작 문제를 함께 수정함.
+  - `volleyball/script.js`에서 `setInterval(sendInput, 50)`를 제거하고 keydown/keyup으로 입력 상태가 실제 변경될 때만 전송하도록 변경함.
+  - 마지막 전송 입력과 동일하면 전송을 스킵하는 dedupe를 추가함.
+  - 키 매핑을 역할 분리 없이 `ArrowLeft/ArrowRight/ArrowUp` 단일 매핑으로 통일함.
+  - `volleyball/server.ps1`에서 물리 틱(33ms)과 state 브로드캐스트 틱(66ms, 약 15Hz)을 분리함.
+  - `event` 메시지(`round_reset`, `peer_left`, `room_full`)는 즉시 전송 유지함.
+- 추가 수정: 변경점 스트림 우선 동작으로 조정함.
+  - FE는 `state` 메시지에서 플레이어 좌표를 덮어쓰지 않고, 공/라운드/phase만 반영함.
+  - FE는 로컬 입력(`inputState`) + 원격 입력 변경(`input_update`)으로 양쪽 플레이어를 고정 스텝(33ms) 로컬 시뮬레이션함.
+  - 서버/worker는 입력 값이 실제 변경된 경우에만 `input_update`를 브로드캐스트함.
+  - FE는 본인 role의 `input_update`는 무시하고 상대 role만 반영함.
+  - `volleyball/SPEC.md`에 `input_update` 메시지 계약을 추가함.
+- 추가 수정: `input` 1회 전송 후 disconnect 및 불필요한 `state` 스트림 문제를 정리함.
+  - worker에서 `PendingInputEvents` 큐에 직접 적재하던 경로를 제거해 disconnect 유발 가능 지점을 제거함.
+  - 서버가 틱마다 slot 입력 변화 여부를 비교해 변경된 경우에만 `input_update`를 즉시 브로드캐스트하도록 이동함.
+  - 주기적 `state` 전송을 비활성화하고, 현재 모드는 `welcome` + `event` + `input_update` 중심으로 동작하도록 조정함.
+  - FE는 `welcome` 수신 시 즉시 `playing`으로 전환하고, `peer_left` 시 `waiting`으로 전환하도록 상태 전환을 로컬 이벤트 기반으로 변경함.
+  - 서버의 `Build-StatePayload`/`state` 브로드캐스트 경로는 제거해, `{"type":"state",...}` 메시지가 더 이상 주기적으로 흘러오지 않게 정리함.
+  - FE는 호환을 위해 `state` 수신 분기 코드는 유지하되, 실제 운영 모드는 `input_update` 기반으로 동작함.
+
+### 검증 메모
+- `pwsh -NoLogo -NoProfile -Command "[void][scriptblock]::Create((Get-Content -LiteralPath '/workspaces/mil/volleyball/server.ps1' -Raw)); 'PARSE_OK'"` 확인.
+- `pwsh -NoLogo -NoProfile -Command "[void][scriptblock]::Create((Get-Content -LiteralPath '/workspaces/mil/volleyball/volleyball-worker.psm1' -Raw)); 'PARSE_OK'"` 확인.
+- 서버 실행 상태에서 `curl -sS -o /tmp/volley_index.html -w "%{http_code}" http://127.0.0.1:8090/` -> `200` 확인.
+- 서버 실행 상태에서 `curl -sS -o /tmp/volley_script.js -w "%{http_code}" http://127.0.0.1:8090/script.js` -> `200` 확인.
+- 서버 실행 상태에서 `curl -sS -o /tmp/volley_style.css -w "%{http_code}" http://127.0.0.1:8090/style.css` -> `200` 확인.
+- 서버 실행 상태에서 `curl -sS -o /tmp/volley_ws.txt -w "%{http_code}" http://127.0.0.1:8090/ws` -> `400` 확인.
+- 권한 상승 WebSocket 점검에서 서버 로그 기준 `Client connected: left/right`까지는 확인했으나, 샌드박스 환경의 소켓 제약/세션 특성으로 `room_full` 수신 페이로드 자동 캡처는 완료하지 못함. 브라우저 3탭으로 재확인 필요.
+- 추가 검증: `volleyball/server.ps1` 파서 재검사 `PARSE_OK` 확인.
+- 추가 검증: `node --check /workspaces/mil/volleyball/script.js` 통과.
+- 추가 검증: `volleyball/server.ps1`, `volleyball/volleyball-worker.psm1` 파서 `PARSE_OK` 재확인.
+- 추가 검증: `volleyball/SPEC.md`를 현재 전송 모드(주기적 state 없음) 기준으로 갱신.
+- 운영 메모: 반영 확인 시 기존 서버 프로세스를 종료 후 재시작하고 브라우저 하드 리로드로 구버전 JS 캐시를 비운 뒤 확인 필요.
+
 ## 2026-03-19
 
 ### 작업 요약
