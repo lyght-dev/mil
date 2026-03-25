@@ -1,0 +1,111 @@
+.setting-shell {
+  max-width: 1120px;
+}
+
+.stg-notice {
+  margin-bottom: 16px;
+  background: linear-gradient(120deg, #f9fcff 0%, #eef5ff 100%);
+}
+
+.stg-notice strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 18px;
+  color: var(--accent-strong);
+}
+
+.stg-notice p {
+  margin: 0;
+  color: var(--soft);
+}
+
+.stg-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 360px 1fr;
+}
+
+.stg-card h2 {
+  margin: 0 0 16px;
+  font-size: 24px;
+}
+
+.stg-form {
+  display: grid;
+  gap: 14px;
+}
+
+.stg-form .field {
+  font-size: 15px;
+}
+
+.stg-form .field input {
+  min-height: 48px;
+  font-size: 20px;
+}
+
+.stg-form .btn-pri[disabled] {
+  opacity: 0.7;
+}
+
+.stg-toolbar {
+  margin-bottom: 12px;
+}
+
+.stg-search {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 16px;
+  color: var(--ink);
+  background: #f6f9ff;
+}
+
+.stg-search[disabled] {
+  color: #7d8ea8;
+}
+
+.stg-table-wrap {
+  overflow-x: auto;
+}
+
+.stg-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.stg-table th,
+.stg-table td {
+  padding: 12px 10px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+  text-align: left;
+}
+
+.stg-table th {
+  color: var(--soft);
+  font-size: 14px;
+}
+
+.stg-table td {
+  font-size: 16px;
+}
+
+.stg-row-btn {
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.stg-row-btn[disabled] {
+  opacity: 0.7;
+}
+
+@media (max-width: 900px) {
+  .stg-grid {
+    grid-template-columns: 1fr;
+  }
+}

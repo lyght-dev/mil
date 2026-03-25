@@ -48,6 +48,23 @@
 - 추가 검증: `volleyball/SPEC.md`를 현재 전송 모드(주기적 state 없음) 기준으로 갱신.
 - 운영 메모: 반영 확인 시 기존 서버 프로세스를 종료 후 재시작하고 브라우저 하드 리로드로 구버전 JS 캐시를 비운 뒤 확인 필요.
 
+### 추가 작업 요약 (acs setting 1차)
+- `acs/setting.html`, `acs/setting.css`, `acs/setting.js`를 추가해 설정 페이지 레이아웃/디자인을 신규 구성함.
+- 설정 페이지는 사용자 추가/삭제 UI 골격만 제공하고, 버튼/검색 입력은 비활성 처리해 기능 연결을 보류함.
+- `acs/board.html` 상단 액션에 `설정` 링크(`/setting.html`)를 추가함.
+- `acs/server.ps1` 정적 라우팅에 `/setting.html`, `/setting.css`, `/setting.js`를 추가함.
+- `acs/SPEC.md` 정적 리소스 목록을 확장하고, 설정 페이지는 1차에서 UI-only임을 명시함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/acs/setting.js` 통과.
+- `pwsh -NoLogo -NoProfile -Command "[void][scriptblock]::Create((Get-Content -LiteralPath '/workspaces/mil/acs/server.ps1' -Raw)); 'PARSE_OK'"` -> `PARSE_OK`.
+- 서버 실행 후 정적 서빙 확인:
+  - `GET /board.html` -> `200`
+  - `GET /setting.html` -> `200`
+  - `GET /setting.css` -> `200`
+  - `GET /setting.js` -> `200`
+- `/tmp/acs_board.html`에서 `href="/setting.html"` 링크 렌더링 확인.
+
 ## 2026-03-19
 
 ### 작업 요약

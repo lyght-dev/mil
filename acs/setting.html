@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>7136부대 위치 정보 관리 시스템 설정</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/setting.css">
+</head>
+<body class="setting-page">
+  <main class="page setting-shell">
+    <header class="topbar">
+      <div>
+        <h1>사용자 설정</h1>
+      </div>
+      <div class="actions">
+        <a class="btn-link" href="/board.html">현황판으로 이동</a>
+        <a class="btn-link" href="/index.html">스캐너로 이동</a>
+      </div>
+    </header>
+
+    <section class="panel stg-notice" aria-live="polite">
+      <strong>1차 구현 안내</strong>
+      <p>현재 화면은 레이아웃/디자인만 제공하며 실제 추가/삭제 동작은 다음 단계에서 연결됩니다.</p>
+    </section>
+
+    <section class="stg-grid">
+      <section class="panel stg-card">
+        <h2>사용자 추가</h2>
+        <form class="stg-form" novalidate>
+          <label class="field">
+            <span>군번</span>
+            <input type="text" autocomplete="off" placeholder="a25-76000001">
+          </label>
+          <label class="field">
+            <span>이름</span>
+            <input type="text" autocomplete="off" placeholder="홍길동">
+          </label>
+          <label class="field">
+            <span>소속</span>
+            <input type="text" autocomplete="off" placeholder="통신중대">
+          </label>
+          <button class="btn-pri" type="button" disabled>사용자 추가</button>
+        </form>
+      </section>
+
+      <section class="panel stg-card">
+        <h2>사용자 목록</h2>
+        <div class="stg-toolbar">
+          <input class="stg-search" type="text" autocomplete="off" placeholder="군번 또는 이름 검색 (2차 구현 예정)" disabled>
+        </div>
+        <div class="stg-table-wrap">
+          <table class="stg-table">
+            <thead>
+              <tr>
+                <th scope="col">군번</th>
+                <th scope="col">이름</th>
+                <th scope="col">소속</th>
+                <th scope="col">작업</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>a25-76000001</td>
+                <td>김일병</td>
+                <td>통신중대</td>
+                <td><button class="btn-link stg-row-btn" type="button" disabled>삭제</button></td>
+              </tr>
+              <tr>
+                <td>a17-76000001</td>
+                <td>김대위</td>
+                <td>본부포대</td>
+                <td><button class="btn-link stg-row-btn" type="button" disabled>삭제</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+  </main>
+  <script src="/setting.js"></script>
+</body>
+</html>

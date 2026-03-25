@@ -1,5 +1,30 @@
 # HANDOFF
 
+## 2026-03-25
+
+### 작업 요약
+- `acs/setting.html`, `acs/setting.css`, `acs/setting.js`를 신규 추가해 설정 페이지를 구성함.
+- 이번 단계는 레이아웃/디자인만 구현하고, `list.json` 추가/삭제 기능 연결은 보류함.
+- 설정 페이지의 `사용자 추가`, `삭제`, `검색` UI는 동작 없이 비활성 상태로 배치함.
+- `acs/board.html` 상단 액션에 `/setting.html` 이동 링크를 추가함.
+- `acs/server.ps1` 정적 파일 라우팅에 `/setting.html`, `/setting.css`, `/setting.js`를 추가함.
+- `acs/SPEC.md` 정적 리소스 목록을 업데이트하고 설정 페이지의 UI-only 단계임을 명시함.
+
+### 다음 세션 인계 포인트
+- 현재 설정 페이지는 화면 스켈레톤만 있는 1차 상태다.
+- `list.json` 실제 추가/삭제는 API와 FE 이벤트 연결이 아직 없다.
+- 2차 구현 시 서버 메모리 `allowedIds` 갱신 방식(즉시 반영 vs 재시작 반영)을 먼저 확정해야 한다.
+
+### 검증 내역
+- `node --check /workspaces/mil/acs/setting.js`
+- `pwsh -NoLogo -NoProfile -Command "[void][scriptblock]::Create((Get-Content -LiteralPath '/workspaces/mil/acs/server.ps1' -Raw)); 'PARSE_OK'"`
+- 서버 실행 후:
+  - `curl -sS -o /tmp/acs_board.html -w "%{http_code}" http://127.0.0.1:8888/board.html` -> `200`
+  - `curl -sS -o /tmp/acs_setting.html -w "%{http_code}" http://127.0.0.1:8888/setting.html` -> `200`
+  - `curl -sS -o /tmp/acs_setting.css -w "%{http_code}" http://127.0.0.1:8888/setting.css` -> `200`
+  - `curl -sS -o /tmp/acs_setting.js -w "%{http_code}" http://127.0.0.1:8888/setting.js` -> `200`
+  - `rg -n "setting.html|설정" /tmp/acs_board.html`로 링크 반영 확인
+
 ## 2026-03-11
 
 ### 작업 요약

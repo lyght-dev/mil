@@ -43,7 +43,7 @@ ACS의 목적은 다음과 같다.
 ### 4.1 현재 단계 포함 범위
 
 - 중앙 HTTP 서버 1개 실행
-- 정적 웹 파일 서빙(`index.html`, `board.html`, `script.js`, `style.css`)
+- 정적 웹 파일 서빙(`index.html`, `board.html`, `setting.html`, `script.js`, `style.css`, `setting.css`, `setting.js`)
 - 정적 데이터 파일 서빙(`list.json`, `location.json`, `logs/access-log.csv`)
 - 입퇴영 요청 수신
 - `list.json` 기반 허용 군번 검증
@@ -57,6 +57,7 @@ ACS의 목적은 다음과 같다.
 - 서버 측 location별 중복 예외 처리
 - 서버 측 현재 상태 관리 API
 - 서버 측 로그 검색, 정렬, 날짜 필터링
+- 설정 페이지의 `list.json` 추가/삭제 동작 처리
 - 인증/인가
 - DB 연동
 - GUI
@@ -135,8 +136,11 @@ ACS의 목적은 다음과 같다.
 ```text
 GET /index.html
 GET /board.html
+GET /setting.html
 GET /script.js
 GET /style.css
+GET /setting.css
+GET /setting.js
 GET /list.json
 GET /location.json
 GET /logs/access-log.csv
@@ -147,6 +151,7 @@ GET /logs/access-log.csv
 - 서버는 위 파일을 그대로 서빙한다.
 - FE는 `list.json`, `location.json`, `logs/access-log.csv`를 직접 읽어 필요한 가공을 수행한다.
 - `logs/access-log.csv`는 원본 CSV 전체를 그대로 내려준다.
+- `setting.html`은 1차 단계에서 레이아웃/디자인만 제공하고, 사용자 추가/삭제 기능은 연결하지 않는다.
 
 ### 8.2 입퇴영 요청
 

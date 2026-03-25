@@ -227,8 +227,11 @@ function Invoke-StaticResourceRoute {
         "/" { "index.html" }
         "/index.html" { "index.html" }
         "/board.html" { "board.html" }
+        "/setting.html" { "setting.html" }
         "/script.js" { "script.js" }
         "/style.css" { "style.css" }
+        "/setting.css" { "setting.css" }
+        "/setting.js" { "setting.js" }
         "/list.json" { "list.json" }
         "/location.json" { "location.json" }
         "/logs/access-log.csv" { "logs/access-log.csv" }
