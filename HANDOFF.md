@@ -2,6 +2,29 @@
 
 ## 2026-03-26
 
+### 추가 작업 요약 (acs access serial -> id 처리)
+- `acs/server.ps1`의 `Import-Members`에 `SerialToMember` 매핑 생성을 추가함.
+- `POST /access` 요청 본문 입력을 `id` 대신 `serial`로 읽도록 변경함.
+- `/access`에서 `serial`로 멤버를 찾고, 해당 멤버의 `id`를 꺼내 `AllowedIds` 허용 여부를 검증하도록 변경함.
+- 로그 append(`logs/access-log.csv`)는 기존과 동일하게 `id` 컬럼 기준으로 기록되도록 유지함.
+- `Invoke-ApiRoute`/`Invoke-Request`/`Start-AcsServer`에 `SerialToMember` 전달 경로를 추가해 요청 처리 체인을 연결함.
+- `list.json` 정적 응답은 변경하지 않아 FE 일괄 조회 시 `serial` 포함 응답을 유지함.
+
+### 추가 검증 메모
+- `pwsh -NoLogo -NoProfile -Command "[void][scriptblock]::Create((Get-Content -LiteralPath '/workspaces/mil/acs/server.ps1' -Raw)); 'PARSE_OK'"` -> `PARSE_OK`.
+
+### 추가 작업 요약 (acs setting serial UI/핸들러 인터페이스)
+- 사용자 요청으로 서버 변경은 전부 원복하고(`acs/server.ps1`), 작업 범위를 `acs/setting.html`, `acs/setting.css`, `acs/setting.js`로 한정함.
+- 설정 폼 상단에 readonly `serial` 필드(`stg-serial`)와 안내 문구를 추가해 "추가 시 자동 발급 예정" 레이아웃을 반영함.
+- 사용자 정보 모드에서 사용할 `serial 재발급` 버튼(`stg-reissue-btn`)을 추가함.
+- `setting.js`에서 `list.json`의 `serial` 값을 정규화/표시하도록 연결하고, 모드별 버튼 표시 제어에 `reissue` 플래그를 추가함.
+- `setting.js`에 `reissueMemberSerial`/`handleReissue` 이벤트 핸들러 인터페이스를 연결하되, 기존 CRUD와 동일하게 `pending` 스텁으로 유지해 실제 동작은 수행하지 않음.
+- `stg-form-actions`에 `flex-wrap`을 적용하고 안내문 스타일(`.stg-hint`)을 추가해 버튼/문구 레이아웃이 좁은 폭에서도 깨지지 않게 정리함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/acs/setting.js` 통과.
+- `git status --short` 기준 이번 범위 변경은 `acs/setting.html`, `acs/setting.css`, `acs/setting.js`만 반영됨(서버 파일 제외).
+
 ### 작업 요약
 - `acs/setting.html`, `acs/setting.css`, `acs/setting.js`를 2차로 확장해 설정 페이지 UI를 실제 동작 상태로 정리함.
 - 설정 페이지에서 `allowedMembers`(`list.json`) 기준 사용자 목록 렌더와 검색(`군번/이름/소속`)을 지원함.

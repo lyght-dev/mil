@@ -142,15 +142,20 @@ function Import-Members {
 
     $items = Get-Content -LiteralPath $ListPath -Raw | ConvertFrom-Json
     $allowedIds = @{}
+    $serialToMember = @{}
 
     foreach ($item in @($items)) {
         $id = Get-StringField -Object $item -Name "id"
         if ([string]::IsNullOrWhiteSpace($id)) { continue }
         $allowedIds[$id] = $true
+
+        $serial = Get-StringField -Object $item -Name "serial"
+        if (-not [string]::IsNullOrWhiteSpace($serial)) { $serialToMember[$serial] = $item }
     }
 
     return @{
         AllowedIds = $allowedIds
+        SerialToMember = $serialToMember
     }
 }
 
@@ -282,7 +287,10 @@ function Invoke-AccessRoute {
         [string]$LogPath,
 
         [Parameter(Mandatory = $true)]
-        [hashtable]$AllowedIds
+        [hashtable]$AllowedIds,
+
+        [Parameter(Mandatory = $true)]
+        [hashtable]$SerialToMember
     )
 
     $payload = Read-AccessPayload -Request $Request -Response $Response
@@ -290,15 +298,27 @@ function Invoke-AccessRoute {
 
     $type = Get-StringField -Object $payload -Name "type"
     $location = Get-StringField -Object $payload -Name "location"
-    $id = Get-StringField -Object $payload -Name "id"
+    $serial = Get-StringField -Object $payload -Name "serial"
 
-    if ([string]::IsNullOrWhiteSpace($type) -or [string]::IsNullOrWhiteSpace($location) -or [string]::IsNullOrWhiteSpace($id)) {
-        Send-RejectedResponse -Response $Response -Message "type, id, location are required"
+    if ([string]::IsNullOrWhiteSpace($type) -or [string]::IsNullOrWhiteSpace($location) -or [string]::IsNullOrWhiteSpace($serial)) {
+        Send-RejectedResponse -Response $Response -Message "type, serial, location are required"
         return $true
     }
 
     if ($type -ne "entry" -and $type -ne "exit") {
         Send-RejectedResponse -Response $Response -Message "type must be entry or exit"
+        return $true
+    }
+
+    $member = $SerialToMember[$serial]
+    if ($null -eq $member) {
+        Send-RejectedResponse -Response $Response -Message "serial is not allowed"
+        return $true
+    }
+
+    $id = Get-StringField -Object $member -Name "id"
+    if ([string]::IsNullOrWhiteSpace($id)) {
+        Send-RejectedResponse -Response $Response -Message "serial is invalid"
         return $true
     }
 
@@ -329,7 +349,10 @@ function Invoke-ApiRoute {
         [string]$LogPath,
 
         [Parameter(Mandatory = $true)]
-        [hashtable]$AllowedIds
+        [hashtable]$AllowedIds,
+
+        [Parameter(Mandatory = $true)]
+        [hashtable]$SerialToMember
     )
 
     $request = $Context.Request
@@ -337,7 +360,7 @@ function Invoke-ApiRoute {
     $path = $request.Url.AbsolutePath
     $method = $request.HttpMethod.ToUpperInvariant()
 
-    if ($method -eq "POST" -and $path -eq "/access") { return (Invoke-AccessRoute -Request $request -Response $response -LogPath $LogPath -AllowedIds $AllowedIds) }
+    if ($method -eq "POST" -and $path -eq "/access") { return (Invoke-AccessRoute -Request $request -Response $response -LogPath $LogPath -AllowedIds $AllowedIds -SerialToMember $SerialToMember) }
 
     return $false
 }
@@ -354,11 +377,14 @@ function Invoke-Request {
         [string]$LogPath,
 
         [Parameter(Mandatory = $true)]
-        [hashtable]$AllowedIds
+        [hashtable]$AllowedIds,
+
+        [Parameter(Mandatory = $true)]
+        [hashtable]$SerialToMember
     )
 
     if (Invoke-StaticResourceRoute -Context $Context -AppRoot $AppRoot) { return }
-    if (Invoke-ApiRoute -Context $Context -LogPath $LogPath -AllowedIds $AllowedIds) { return }
+    if (Invoke-ApiRoute -Context $Context -LogPath $LogPath -AllowedIds $AllowedIds -SerialToMember $SerialToMember) { return }
     Send-TextResponse -Response $Context.Response -Text "Not Found" -StatusCode 404
 }
 
@@ -368,6 +394,7 @@ function Start-AcsServer {
     $listPath = Join-Path $appRoot "list.json"
     $membersData = Import-Members -ListPath $listPath
     $allowedIds = $membersData.AllowedIds
+    $serialToMember = $membersData.SerialToMember
 
     $listener = [System.Net.HttpListener]::new()
     $prefix = "http://+:8888/"
@@ -385,7 +412,7 @@ function Start-AcsServer {
             $context = $listener.GetContext()
 
             try {
-                Invoke-Request -Context $context -AppRoot $appRoot -LogPath $logPath -AllowedIds $allowedIds
+                Invoke-Request -Context $context -AppRoot $appRoot -LogPath $logPath -AllowedIds $allowedIds -SerialToMember $serialToMember
             } catch {
                 Send-InternalServerError -Response $context.Response
             }
