@@ -24,6 +24,13 @@
         <h2 id="stg-panel-title">사용자 정보</h2>
 
         <form id="stg-form" class="stg-form" novalidate>
+          <div class="stg-serial-line">
+            <div class="stg-serial-meta">
+              <span class="stg-serial-meta-label">마지막 재발급 시각</span>
+              <strong id="stg-serial-reissued-at">-</strong>
+            </div>
+            <button id="stg-reissue-btn" class="btn-link stg-reissue-btn" type="button">serial 재발급</button>
+          </div>
           <label class="field" for="stg-id">
             <span>군번</span>
             <input id="stg-id" name="id" type="text" autocomplete="off" placeholder="a25-76000001" required>

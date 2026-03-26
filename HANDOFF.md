@@ -2,6 +2,28 @@
 
 ## 2026-03-26
 
+### 추가 작업 요약 (acs setting serial 시각 UI 전환)
+- `acs/setting.html`에서 serial 숫자 입력 필드와 `6자리 숫자 발급` 안내 문구를 제거함.
+- serial 영역을 `마지막 재발급 시각` + `serial 재발급` 버튼의 단일 행으로 재구성해 같은 맥락 UI로 배치함.
+- `acs/setting.js`는 `serial` 값 표시를 제거하고 `serialLastReissuedAtKst` 필드를 읽어 정보 패널에 표시하도록 변경함.
+- `serialLastReissuedAtKst` 값이 없으면 `-`를 표시하도록 기본값 처리를 추가함.
+- 재발급 버튼 핸들러는 기존과 동일하게 인터페이스만 유지(`pending` 스텁)하고 실동작은 연결하지 않음.
+- `acs/setting.css`에 serial 메타 한 줄 레이아웃 스타일과 모바일 줄바꿈 스타일을 추가함.
+- `acs/list.json` 샘플 데이터에 `serialLastReissuedAtKst`(KST 문자열) 필드를 추가함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/acs/setting.js` 통과.
+
+### 추가 작업 요약 (acs setting serial-line 레이아웃 깨짐 수정)
+- `acs/setting.css`의 `.stg-serial-line`을 `flex`에서 `grid(minmax(0,1fr) auto)`로 변경해 텍스트/버튼이 같은 라인에서 안정적으로 배치되도록 조정함.
+- `.stg-serial-meta`에 `flex-wrap`을 추가하고 재발급 시각 텍스트에 `overflow-wrap:anywhere`를 적용해 좁은 폭에서 aside 영역 밖으로 튀어나오던 문제를 완화함.
+- 모바일 구간에서도 동일한 2열 grid를 유지하고 내부 텍스트만 줄바꿈되도록 정리함.
+
+### 추가 작업 요약 (acs 마지막 재발급 시각 표시 포맷)
+- `acs/setting.js`에 KST 시각 문자열(`YYYY-MM-DD HH:mm:ss KST`)을 상대 일수로 변환하는 `toDaysAgoText`를 추가함.
+- 사용자 정보 패널의 `마지막 재발급 시각` 값은 원문 시각 대신 `N일전` 포맷으로 표시되도록 변경함.
+- 값이 비어있거나 형식이 다르면 `-`를 표시하도록 처리함.
+
 ### 추가 작업 요약 (cave 오목 MVP)
 - `cave/` 디렉토리를 신규 추가하고 `server.ps1`, `worker.psm1`, `index.html`, `script.js`, `style.css`, `SPEC.md`를 작성함.
 - `cave/server.ps1`는 `http://+:4608/`에서 정적 파일(`/`, `/index.html`, `/script.js`, `/style.css`)과 `/ws` WebSocket 업그레이드를 처리함.

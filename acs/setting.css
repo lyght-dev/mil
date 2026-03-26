@@ -22,6 +22,45 @@
   gap: 14px;
 }
 
+.stg-serial-line {
+  min-height: 48px;
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f6f9ff;
+}
+
+.stg-serial-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.stg-serial-meta-label {
+  color: var(--soft);
+  font-size: 14px;
+}
+
+#stg-serial-reissued-at {
+  font-size: 15px;
+  color: #2a3e5e;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.stg-reissue-btn {
+  min-height: 36px;
+  white-space: nowrap;
+  justify-self: end;
+}
+
 .stg-form .field {
   font-size: 15px;
 }
@@ -43,6 +82,7 @@
 
 .stg-form-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   align-items: center;
 }
@@ -146,5 +186,14 @@
   .stg-form-actions {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .stg-serial-line {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 10px 12px;
+  }
+
+  #stg-serial-reissued-at {
+    word-break: break-word;
   }
 }

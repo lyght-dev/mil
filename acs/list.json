@@ -1,12 +1,14 @@
 [
   {
     "serial": "123456",
+    "serialLastReissuedAtKst": "2026-03-26 20:05:00 KST",
     "id": "a25-76000001",
     "name": "김일병",
     "unit": "통신중대"
   },
   {
     "serial": "000000",
+    "serialLastReissuedAtKst": "2026-03-26 20:12:30 KST",
     "id": "a17-76000001",
     "name": "김대위",
     "unit": "본부포대",

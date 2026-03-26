@@ -66,6 +66,7 @@
         if (!id) return null;
 
         return {
+          serialLastReissuedAtKst: String(item?.serialLastReissuedAtKst || "").trim(),
           id,
           name: String(item?.name || "").trim(),
           unit: String(item?.unit || "").trim()
@@ -142,6 +143,35 @@
     if (title) title.textContent = text;
   };
 
+  const toDaysAgoText = raw => {
+    const value = String(raw || "").trim();
+    if (!value) return "-";
+
+    const match = value.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?\s*KST$/i);
+    if (!match) return "-";
+
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const hour = Number(match[4] || "0");
+    const minute = Number(match[5] || "0");
+    const second = Number(match[6] || "0");
+    const issuedMs = Date.UTC(year, month - 1, day, hour - 9, minute, second);
+    if (!Number.isFinite(issuedMs)) return "-";
+
+    const diffMs = Date.now() - issuedMs;
+    const dayMs = 24 * 60 * 60 * 1000;
+    const daysAgo = Math.max(0, Math.floor(diffMs / dayMs));
+    return `${daysAgo}일전`;
+  };
+
+  const setSerialLastReissuedAt = text => {
+    const el = $("stg-serial-reissued-at");
+    if (!el) return;
+
+    el.textContent = toDaysAgoText(text);
+  };
+
   const setFormValues = member => {
     const idInput = $("stg-id");
     const nameInput = $("stg-name");
@@ -171,14 +201,16 @@
     if (unitInput) unitInput.readOnly = unitReadonly;
   };
 
-  const setButtons = ({ edit, remove, save, cancel, saveText }) => {
+  const setButtons = ({ edit, remove, reissue, save, cancel, saveText }) => {
     const editButton = $("stg-edit-btn");
     const deleteButton = $("stg-delete-btn");
+    const reissueButton = $("stg-reissue-btn");
     const saveButton = $("stg-save-btn");
     const cancelButton = $("stg-cancel-btn");
 
     if (editButton) editButton.hidden = !edit;
     if (deleteButton) deleteButton.hidden = !remove;
+    if (reissueButton) reissueButton.hidden = !reissue;
     if (saveButton) {
       saveButton.hidden = !save;
       if (saveText) saveButton.textContent = saveText;
@@ -197,8 +229,9 @@
     if (panelMode === MODE_EMPTY) {
       setPanelTitle("사용자 정보");
       setFormValues(null);
+      setSerialLastReissuedAt("");
       setFieldReadonly(true, true, true);
-      setButtons({ edit: false, remove: false, save: false, cancel: false });
+      setButtons({ edit: false, remove: false, reissue: false, save: false, cancel: false });
       renderMemberTable();
       return;
     }
@@ -206,8 +239,9 @@
     if (panelMode === MODE_INFO) {
       setPanelTitle("사용자 정보");
       setFormValues(member);
+      setSerialLastReissuedAt(member?.serialLastReissuedAtKst);
       setFieldReadonly(true, true, true);
-      setButtons({ edit: true, remove: true, save: false, cancel: false });
+      setButtons({ edit: true, remove: true, reissue: true, save: false, cancel: false });
       renderMemberTable();
       return;
     }
@@ -215,16 +249,18 @@
     if (panelMode === MODE_EDIT) {
       setPanelTitle("사용자 수정");
       setFormValues(member);
+      setSerialLastReissuedAt(member?.serialLastReissuedAtKst);
       setFieldReadonly(true, false, false);
-      setButtons({ edit: false, remove: false, save: true, cancel: true, saveText: "수정 저장" });
+      setButtons({ edit: false, remove: false, reissue: false, save: true, cancel: true, saveText: "수정 저장" });
       renderMemberTable();
       return;
     }
 
     setPanelTitle("사용자 추가");
     setFormValues(null);
+    setSerialLastReissuedAt("");
     setFieldReadonly(false, false, false);
-    setButtons({ edit: false, remove: false, save: true, cancel: true, saveText: "사용자 추가" });
+    setButtons({ edit: false, remove: false, reissue: false, save: true, cancel: true, saveText: "사용자 추가" });
     renderMemberTable();
   };
 
@@ -286,6 +322,7 @@
   const createMember = async member => ({ status: "pending", action: "create", member });
   const updateMember = async (id, memberPatch) => ({ status: "pending", action: "update", id, memberPatch });
   const deleteMember = async id => ({ status: "pending", action: "delete", id });
+  const reissueMemberSerial = async id => ({ status: "pending", action: "reissue", id });
 
   const runCrudAction = async (actionName, task) => {
     try {
@@ -367,6 +404,20 @@
     });
   };
 
+  const handleReissue = () => {
+    const member = getSelectedMember();
+    if (!member) {
+      enterEmptyMode();
+      return;
+    }
+
+    const ok = window.confirm(`${member.id} 사용자의 serial을 재발급하시겠습니까?`);
+    if (!ok) return;
+
+    void runCrudAction("serial 재발급", () => reissueMemberSerial(member.id))
+      .then(() => restorePanelAfterReload(MODE_INFO));
+  };
+
   const handleCancel = () => {
     if (selectedMemberId && allowedMemberById.has(selectedMemberId)) {
       panelMode = MODE_INFO;
@@ -384,6 +435,7 @@
     const add = $("stg-add");
     const edit = $("stg-edit-btn");
     const remove = $("stg-delete-btn");
+    const reissue = $("stg-reissue-btn");
     const cancel = $("stg-cancel-btn");
     const body = $("stg-body");
 
@@ -412,6 +464,10 @@
 
     remove?.addEventListener("click", () => {
       handleDelete();
+    });
+
+    reissue?.addEventListener("click", () => {
+      handleReissue();
     });
 
     cancel?.addEventListener("click", () => {
