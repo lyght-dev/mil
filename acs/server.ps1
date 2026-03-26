@@ -1,5 +1,6 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+$script:ListPath = ""
 
 function Get-ContentType {
     param(
@@ -153,12 +154,7 @@ function Read-JsonPayload {
 
 ###### setting begin ######
 function Import-Members {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$ListPath
-    )
-
-    $items = Get-Content -LiteralPath $ListPath -Raw | ConvertFrom-Json
+    $items = Get-Content -LiteralPath $script:ListPath -Raw | ConvertFrom-Json
     $members = @($items)
     $allowedIds = @{}
     $serialToMember = @{}
@@ -181,15 +177,12 @@ function Import-Members {
 function Save-Members {
     param(
         [Parameter(Mandatory = $true)]
-        [string]$ListPath,
-
-        [Parameter(Mandatory = $true)]
         [object[]]$Members
     )
 
     $json = @($Members) | ConvertTo-Json -Depth 8
     $encoding = [System.Text.UTF8Encoding]::new($false)
-    [System.IO.File]::WriteAllText($ListPath, $json, $encoding)
+    [System.IO.File]::WriteAllText($script:ListPath, $json, $encoding)
 }
 
 function Sync-MemberCaches {
@@ -287,9 +280,6 @@ function Invoke-SettingApiRoute {
         [System.Net.HttpListenerContext]$Context,
 
         [Parameter(Mandatory = $true)]
-        [string]$ListPath,
-
-        [Parameter(Mandatory = $true)]
         [hashtable]$AllowedIds,
 
         [Parameter(Mandatory = $true)]
@@ -313,7 +303,7 @@ function Invoke-SettingApiRoute {
             return $true
         }
 
-        $members = (Import-Members -ListPath $ListPath).Members
+        $members = (Import-Members).Members
         if ($null -ne (Find-MemberById -Members $members -Id $id)) {
             Send-RejectedResponse -Response $response -Message "id already exists"
             return $true
@@ -329,7 +319,7 @@ function Invoke-SettingApiRoute {
         $nextMembers = @($members + $newMember)
 
         try {
-            Save-Members -ListPath $ListPath -Members $nextMembers
+            Save-Members -Members $nextMembers
         } catch {
             Send-RejectedResponse -Response $response -Message "failed to write list" -StatusCode 500
             return $true
@@ -352,7 +342,7 @@ function Invoke-SettingApiRoute {
             return $true
         }
 
-        $members = (Import-Members -ListPath $ListPath).Members
+        $members = (Import-Members).Members
         $target = Find-MemberById -Members $members -Id $id
         if ($null -eq $target) {
             Send-RejectedResponse -Response $response -Message "id not found" -StatusCode 404
@@ -363,7 +353,7 @@ function Invoke-SettingApiRoute {
         Set-MemberField -Member $target -Name "unit" -Value $unit
 
         try {
-            Save-Members -ListPath $ListPath -Members $members
+            Save-Members -Members $members
         } catch {
             Send-RejectedResponse -Response $response -Message "failed to write list" -StatusCode 500
             return $true
@@ -384,7 +374,7 @@ function Invoke-SettingApiRoute {
             return $true
         }
 
-        $members = (Import-Members -ListPath $ListPath).Members
+        $members = (Import-Members).Members
         $nextMembers = @()
         $removed = $false
 
@@ -403,7 +393,7 @@ function Invoke-SettingApiRoute {
         }
 
         try {
-            Save-Members -ListPath $ListPath -Members $nextMembers
+            Save-Members -Members $nextMembers
         } catch {
             Send-RejectedResponse -Response $response -Message "failed to write list" -StatusCode 500
             return $true
@@ -424,7 +414,7 @@ function Invoke-SettingApiRoute {
             return $true
         }
 
-        $members = (Import-Members -ListPath $ListPath).Members
+        $members = (Import-Members).Members
         $target = Find-MemberById -Members $members -Id $id
         if ($null -eq $target) {
             Send-RejectedResponse -Response $response -Message "id not found" -StatusCode 404
@@ -435,7 +425,7 @@ function Invoke-SettingApiRoute {
         Set-MemberField -Member $target -Name "serialLastReissuedAtKst" -Value (Get-KstNowText)
 
         try {
-            Save-Members -ListPath $ListPath -Members $members
+            Save-Members -Members $members
         } catch {
             Send-RejectedResponse -Response $response -Message "failed to write list" -StatusCode 500
             return $true
@@ -623,9 +613,6 @@ function Invoke-ApiRoute {
         [string]$LogPath,
 
         [Parameter(Mandatory = $true)]
-        [string]$ListPath,
-
-        [Parameter(Mandatory = $true)]
         [hashtable]$AllowedIds,
 
         [Parameter(Mandatory = $true)]
@@ -637,7 +624,7 @@ function Invoke-ApiRoute {
     $path = $request.Url.AbsolutePath
     $method = $request.HttpMethod.ToUpperInvariant()
 
-    if (Invoke-SettingApiRoute -Context $Context -ListPath $ListPath -AllowedIds $AllowedIds -SerialToMember $SerialToMember) { return $true }
+    if (Invoke-SettingApiRoute -Context $Context -AllowedIds $AllowedIds -SerialToMember $SerialToMember) { return $true }
     if ($method -eq "POST" -and $path -eq "/access") { return (Invoke-AccessRoute -Request $request -Response $response -LogPath $LogPath -AllowedIds $AllowedIds -SerialToMember $SerialToMember) }
 
     return $false
@@ -655,9 +642,6 @@ function Invoke-Request {
         [string]$LogPath,
 
         [Parameter(Mandatory = $true)]
-        [string]$ListPath,
-
-        [Parameter(Mandatory = $true)]
         [hashtable]$AllowedIds,
 
         [Parameter(Mandatory = $true)]
@@ -665,15 +649,15 @@ function Invoke-Request {
     )
 
     if (Invoke-StaticResourceRoute -Context $Context -AppRoot $AppRoot) { return }
-    if (Invoke-ApiRoute -Context $Context -LogPath $LogPath -ListPath $ListPath -AllowedIds $AllowedIds -SerialToMember $SerialToMember) { return }
+    if (Invoke-ApiRoute -Context $Context -LogPath $LogPath -AllowedIds $AllowedIds -SerialToMember $SerialToMember) { return }
     Send-TextResponse -Response $Context.Response -Text "Not Found" -StatusCode 404
 }
 
 function Start-AcsServer {
     $appRoot = if ([string]::IsNullOrWhiteSpace($PSScriptRoot)) { (Get-Location).Path } else { $PSScriptRoot }
     $logPath = Join-Path $appRoot "logs/access-log.csv"
-    $listPath = Join-Path $appRoot "list.json"
-    $membersData = Import-Members -ListPath $listPath
+    $script:ListPath = Join-Path $appRoot "list.json"
+    $membersData = Import-Members
     $allowedIds = $membersData.AllowedIds
     $serialToMember = $membersData.SerialToMember
 
@@ -684,7 +668,7 @@ function Start-AcsServer {
     Write-Host ("ACS listening on {0}" -f $prefix)
     Write-Host ("App root: {0}" -f $appRoot)
     Write-Host ("Log path: {0}" -f $logPath)
-    Write-Host ("List path: {0}" -f $listPath)
+    Write-Host ("List path: {0}" -f $script:ListPath)
 
     try {
         $listener.Start()
@@ -693,7 +677,7 @@ function Start-AcsServer {
             $context = $listener.GetContext()
 
             try {
-                Invoke-Request -Context $context -AppRoot $appRoot -LogPath $logPath -ListPath $listPath -AllowedIds $allowedIds -SerialToMember $serialToMember
+                Invoke-Request -Context $context -AppRoot $appRoot -LogPath $logPath -AllowedIds $allowedIds -SerialToMember $serialToMember
             } catch {
                 Send-InternalServerError -Response $context.Response
             }

@@ -2,6 +2,24 @@
 
 ## 2026-03-26
 
+### 추가 작업 요약 (acs ListPath 공용 변수화)
+- `acs/server.ps1` 최상단에 `$script:ListPath`를 선언하고, 시작 시 1회 설정해 script 범위 공용 변수로 사용하도록 변경함.
+- setting 함수들(`Import-Members`, `Save-Members`, `Invoke-SettingApiRoute`)에서 `ListPath` 인자 전달을 제거하고 내부에서 `$script:ListPath`를 직접 참조하게 정리함.
+- 호출 체인(`Invoke-Request` -> `Invoke-ApiRoute` -> `Invoke-SettingApiRoute`)에서 `ListPath` 파라미터를 제거해 함수 시그니처를 단순화함.
+
+### 추가 검증 메모
+- `pwsh` 파서 검사: `acs/server.ps1` -> `PARSE_OK`
+- `rg -n "ListPath|\\-ListPath" /workspaces/mil/acs/server.ps1` 확인: 인자 전달(`-ListPath`) 경로 제거 완료.
+
+### 추가 작업 요약 (cave 차례 문구/배경색 조정)
+- `cave/script.js`의 진행 상태 문구를 내 기준 표현으로 조정함.
+- 현재 턴이 내 돌 색과 같으면 `내 차례`, 아니면 상대 색(`흑`/`백`) 차례로 표시하도록 `turnLabelForMe`를 추가함.
+- `cave/style.css`에서 페이지 배경색을 회색(`#d9d9d9`)으로 지정함.
+- `cave/SPEC.md` UI 규칙의 배경 정책을 현재 동작(회색 페이지 배경) 기준으로 갱신함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/cave/script.js` 통과.
+
 ### 추가 작업 요약 (cave ready 게이트/메뉴 색/outline 보강)
 - `cave/script.js`에 `roundActive` 게이트를 추가해 접속 직후 자동 시작을 막고, 양측(`black`, `white`) ready가 모두 true일 때만 시작하도록 변경함.
 - 초기 시작과 승리 후 재시작 모두 동일하게 ready handshake를 요구하도록 통일함.
