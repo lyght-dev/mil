@@ -2,6 +2,15 @@
 
 ## 2026-03-26
 
+### 추가 작업 요약 (acs start 변수 script 상단화 + allowedMembers 강제 갱신)
+- `acs/server.ps1`에서 `Start-AcsServer`에서 선언되던 주요 런타임 변수(`AppRoot`, `LogPath`, `AllowedIds`, `SerialToMember`, `Prefix`)를 script 상단 변수로 선언하고 시작 시 값 할당 후 사용하도록 정리함.
+- 기존 path 흐름은 유지하고(`ListPath` 포함), 이미 있는 경로 변수 구조를 제거하지 않고 최소 수정으로 적용함.
+- `acs/setting.js`에 `forceRefreshAllowedMembers()`를 추가하고 CRUD/reissue 공통 후처리에서 해당 함수를 호출해 `allowedMembers`를 강제로 재조회 + 즉시 테이블 렌더링하도록 변경함.
+
+### 추가 검증 메모
+- `pwsh` 파서 검사: `acs/server.ps1` -> `PARSE_OK`
+- `node --check /workspaces/mil/acs/setting.js` 통과.
+
 ### 추가 작업 요약 (acs ListPath 공용 변수화)
 - `acs/server.ps1` 최상단에 `$script:ListPath`를 선언하고, 시작 시 1회 설정해 script 범위 공용 변수로 사용하도록 변경함.
 - setting 함수들(`Import-Members`, `Save-Members`, `Invoke-SettingApiRoute`)에서 `ListPath` 인자 전달을 제거하고 내부에서 `$script:ListPath`를 직접 참조하게 정리함.

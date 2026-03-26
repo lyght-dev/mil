@@ -318,6 +318,11 @@
     setAllowedMembers(data);
   };
 
+  const forceRefreshAllowedMembers = async () => {
+    await reloadAllowedMembers();
+    renderMemberTable();
+  };
+
   const parseFormMember = form => {
     const formData = new FormData(form);
     const id = String(formData.get("id") || "").trim();
@@ -342,7 +347,7 @@
     }
 
     try {
-      await reloadAllowedMembers();
+      await forceRefreshAllowedMembers();
     } catch (err) {
       showMessage(err?.message || "allowedMembers 재조회에 실패했습니다.", "error");
     }

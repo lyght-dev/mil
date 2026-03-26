@@ -1,6 +1,11 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+$script:AppRoot = ""
+$script:LogPath = ""
 $script:ListPath = ""
+$script:AllowedIds = @{}
+$script:SerialToMember = @{}
+$script:Prefix = "http://+:8888/"
 
 function Get-ContentType {
     param(
@@ -654,20 +659,19 @@ function Invoke-Request {
 }
 
 function Start-AcsServer {
-    $appRoot = if ([string]::IsNullOrWhiteSpace($PSScriptRoot)) { (Get-Location).Path } else { $PSScriptRoot }
-    $logPath = Join-Path $appRoot "logs/access-log.csv"
-    $script:ListPath = Join-Path $appRoot "list.json"
+    $script:AppRoot = if ([string]::IsNullOrWhiteSpace($PSScriptRoot)) { (Get-Location).Path } else { $PSScriptRoot }
+    $script:LogPath = Join-Path $script:AppRoot "logs/access-log.csv"
+    $script:ListPath = Join-Path $script:AppRoot "list.json"
     $membersData = Import-Members
-    $allowedIds = $membersData.AllowedIds
-    $serialToMember = $membersData.SerialToMember
+    $script:AllowedIds = $membersData.AllowedIds
+    $script:SerialToMember = $membersData.SerialToMember
 
     $listener = [System.Net.HttpListener]::new()
-    $prefix = "http://+:8888/"
-    $listener.Prefixes.Add($prefix)
+    $listener.Prefixes.Add($script:Prefix)
 
-    Write-Host ("ACS listening on {0}" -f $prefix)
-    Write-Host ("App root: {0}" -f $appRoot)
-    Write-Host ("Log path: {0}" -f $logPath)
+    Write-Host ("ACS listening on {0}" -f $script:Prefix)
+    Write-Host ("App root: {0}" -f $script:AppRoot)
+    Write-Host ("Log path: {0}" -f $script:LogPath)
     Write-Host ("List path: {0}" -f $script:ListPath)
 
     try {
@@ -677,7 +681,7 @@ function Start-AcsServer {
             $context = $listener.GetContext()
 
             try {
-                Invoke-Request -Context $context -AppRoot $appRoot -LogPath $logPath -AllowedIds $allowedIds -SerialToMember $serialToMember
+                Invoke-Request -Context $context -AppRoot $script:AppRoot -LogPath $script:LogPath -AllowedIds $script:AllowedIds -SerialToMember $script:SerialToMember
             } catch {
                 Send-InternalServerError -Response $context.Response
             }
