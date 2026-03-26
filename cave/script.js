@@ -10,7 +10,9 @@ const phaseText = document.getElementById("phase");
 const readyText = document.getElementById("readyState");
 const readyBtn = document.getElementById("readyBtn");
 const logBox = document.getElementById("log");
+const topBar = document.getElementById("topBar");
 const canvas = document.getElementById("board");
+const winnerNotice = document.getElementById("winnerNotice");
 const ctx = canvas.getContext("2d");
 
 canvas.width = CANVAS_SIZE;
@@ -20,6 +22,7 @@ const state = {
   connected: false,
   role: null,
   turn: "black",
+  roundActive: false,
   board: createBoard(),
   gameOver: false,
   winner: null,
@@ -47,11 +50,34 @@ function isInRange(x, y) {
   return x >= 0 && x < BOARD_SIZE && y >= 0 && y < BOARD_SIZE;
 }
 
-function addLog(text) {
+function roleLabel(role) {
+  if (role === "black") return "흑";
+  if (role === "white") return "백";
+  if (role === "spectator") return "관전자";
+  return "-";
+}
+
+function turnLabelForMe(turnRole) {
+  if (!isPlayerRole(turnRole)) {
+    return "-";
+  }
+
+  if (isPlayerRole(state.role) && state.role === turnRole) {
+    return "내";
+  }
+
+  return roleLabel(turnRole);
+}
+
+function addLog(kind, text) {
   const row = document.createElement("div");
-  row.textContent = text;
+  row.textContent = `[${kind}] ${text}`;
   logBox.appendChild(row);
   logBox.scrollTop = logBox.scrollHeight;
+}
+
+function addMoveLog(role, x, y) {
+  addLog("착수", `${roleLabel(role)} (${x},${y}) 착수`);
 }
 
 function sendJson(payload) {
@@ -109,6 +135,10 @@ function applyMove(role, x, y) {
     return false;
   }
 
+  if (!state.roundActive) {
+    return false;
+  }
+
   if (state.turn !== role) {
     return false;
   }
@@ -121,6 +151,7 @@ function applyMove(role, x, y) {
 
   if (checkWin(role, x, y)) {
     state.gameOver = true;
+    state.roundActive = false;
     state.winner = role;
     state.ready.black = false;
     state.ready.white = false;
@@ -131,48 +162,99 @@ function applyMove(role, x, y) {
   return true;
 }
 
-function resetRound() {
+function startRound() {
   state.board = createBoard();
   state.turn = "black";
+  state.roundActive = true;
   state.gameOver = false;
   state.winner = null;
   state.ready.black = false;
   state.ready.white = false;
-  addLog("새 판 시작");
+  addLog("접속", "양쪽 준비 완료, 시작");
 }
 
-function maybeResetRound() {
-  if (!state.gameOver) {
-    return;
-  }
-
+function tryStartRoundByReady() {
   if (!state.ready.black || !state.ready.white) {
     return;
   }
 
-  resetRound();
+  startRound();
+}
+
+function setBoardOutline() {
+  canvas.classList.remove("turn-black", "turn-white", "turn-neutral");
+
+  if (!state.connected || !state.roundActive || state.gameOver || !isPlayerRole(state.turn)) {
+    canvas.classList.add("turn-neutral");
+    return;
+  }
+
+  if (state.turn === "black") {
+    canvas.classList.add("turn-black");
+    return;
+  }
+
+  canvas.classList.add("turn-white");
+}
+
+function setTopRoleColor() {
+  topBar.classList.remove("role-black", "role-white", "role-neutral");
+
+  if (state.role === "black") {
+    topBar.classList.add("role-black");
+    return;
+  }
+
+  if (state.role === "white") {
+    topBar.classList.add("role-white");
+    return;
+  }
+
+  topBar.classList.add("role-neutral");
+}
+
+function setWinnerNotice() {
+  if (!state.gameOver || !isPlayerRole(state.winner)) {
+    winnerNotice.hidden = true;
+    winnerNotice.textContent = "";
+    return;
+  }
+
+  winnerNotice.hidden = false;
+  winnerNotice.textContent = `${roleLabel(state.winner)} 승리!`;
 }
 
 function updateUi() {
-  connectionText.textContent = state.connected ? "Connected" : "Disconnected";
-  roleText.textContent = `Role: ${state.role || "-"}`;
+  connectionText.textContent = `연결 상태: ${state.connected ? "연결됨" : "연결 안 됨"}`;
+  roleText.textContent = `내 돌 색: ${roleLabel(state.role)}`;
+  readyText.textContent = `준비 상태: 흑 ${state.ready.black ? "O" : "X"} | 백 ${state.ready.white ? "O" : "X"}`;
 
   if (!state.connected) {
-    phaseText.textContent = "Socket disconnected";
+    phaseText.textContent = "진행 상태: 연결 대기";
   } else if (state.gameOver) {
-    phaseText.textContent = `Winner: ${state.winner}`;
+    phaseText.textContent = `진행 상태: ${roleLabel(state.winner)} 승리`;
+  } else if (!state.roundActive) {
+    phaseText.textContent = "진행 상태: 준비 대기";
   } else {
-    phaseText.textContent = `Turn: ${state.turn}`;
+    phaseText.textContent = `진행 상태: ${turnLabelForMe(state.turn)} 차례`;
   }
 
-  readyText.textContent = `Ready - Black: ${state.ready.black ? "O" : "X"} | White: ${state.ready.white ? "O" : "X"}`;
-
   const canReady = state.connected &&
-    state.gameOver &&
+    !state.roundActive &&
     isPlayerRole(state.role) &&
     state.ready[state.role] === false;
 
   readyBtn.disabled = !canReady;
+
+  if (isPlayerRole(state.role) && state.ready[state.role]) {
+    readyBtn.textContent = "준비 완료";
+  } else {
+    readyBtn.textContent = "준비";
+  }
+
+  setTopRoleColor();
+  setBoardOutline();
+  setWinnerNotice();
   drawBoard();
 }
 
@@ -187,6 +269,7 @@ function drawBoard() {
 
   for (let i = 0; i < BOARD_SIZE; i += 1) {
     const p = BOARD_PADDING + i * CELL_SIZE;
+
     ctx.beginPath();
     ctx.moveTo(BOARD_PADDING, p);
     ctx.lineTo(CANVAS_SIZE - BOARD_PADDING, p);
@@ -240,6 +323,7 @@ function handleMoveMessage(msg) {
   }
 
   if (applyMove(msg.role, msg.x, msg.y)) {
+    addMoveLog(msg.role, msg.x, msg.y);
     updateUi();
   }
 }
@@ -253,29 +337,34 @@ function handleReadyMessage(msg) {
     return;
   }
 
-  if (!state.gameOver) {
+  if (state.roundActive) {
     return;
   }
 
   state.ready[msg.role] = msg.ready;
-  maybeResetRound();
+  tryStartRoundByReady();
   updateUi();
 }
 
 function handlePeerEvent(msg) {
   if (msg.event === "join") {
-    addLog(`join: ${msg.role || "unknown"}`);
+    addLog("접속", `${roleLabel(msg.role)} 입장`);
     return;
   }
 
   if (msg.event === "leave") {
-    addLog(`leave: ${msg.role || "unknown"}`);
+    if (isPlayerRole(msg.role)) {
+      state.roundActive = false;
+      state.ready[msg.role] = false;
+    }
+    addLog("접속", `${roleLabel(msg.role)} 퇴장`);
+    updateUi();
   }
 }
 
 function handleWelcome(msg) {
   state.role = msg.role;
-  addLog(`welcome: ${msg.role}`);
+  addLog("접속", `${roleLabel(msg.role)}로 접속`);
   updateUi();
 }
 
@@ -311,7 +400,10 @@ function connect() {
 
   ws.onopen = () => {
     state.connected = true;
-    addLog("socket connected");
+    state.roundActive = false;
+    state.ready.black = false;
+    state.ready.white = false;
+    addLog("접속", "소켓 연결됨");
     updateUi();
   };
 
@@ -319,12 +411,15 @@ function connect() {
 
   ws.onclose = () => {
     state.connected = false;
-    addLog("socket closed");
+    state.roundActive = false;
+    state.ready.black = false;
+    state.ready.white = false;
+    addLog("접속", "소켓 연결 종료");
     updateUi();
   };
 
   ws.onerror = () => {
-    addLog("socket error");
+    addLog("접속", "소켓 오류 발생");
   };
 }
 
@@ -359,7 +454,7 @@ canvas.addEventListener("click", (event) => {
     return;
   }
 
-  if (state.gameOver) {
+  if (!state.roundActive || state.gameOver) {
     return;
   }
 
@@ -376,6 +471,7 @@ canvas.addEventListener("click", (event) => {
     return;
   }
 
+  addMoveLog(state.role, pos.x, pos.y);
   sendJson({
     type: "move",
     role: state.role,
@@ -387,7 +483,7 @@ canvas.addEventListener("click", (event) => {
 });
 
 readyBtn.addEventListener("click", () => {
-  if (!state.connected || !state.gameOver || !isPlayerRole(state.role)) {
+  if (!state.connected || state.roundActive || !isPlayerRole(state.role)) {
     return;
   }
 
@@ -402,7 +498,7 @@ readyBtn.addEventListener("click", () => {
     ready: true
   });
 
-  maybeResetRound();
+  tryStartRoundByReady();
   updateUi();
 });
 

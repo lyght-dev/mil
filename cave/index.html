@@ -3,26 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Cave Omok</title>
+    <title>Cave Socket Test</title>
     <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-<main class="wrap">
-    <h1>Cave Omok</h1>
+<main class="app">
+    <header id="topBar" class="top role-neutral">
+        <h1>Socket Test</h1>
+        <div class="status-row">
+            <p id="connection">연결 상태: 연결 안 됨</p>
+            <p id="readyState">준비 상태: 흑 X | 백 X</p>
+            <p id="role">내 돌 색: -</p>
+        </div>
+        <button id="readyBtn" type="button">다음 판 준비</button>
+    </header>
 
-    <section class="panel">
-        <p id="connection">Disconnected</p>
-        <p id="role">Role: -</p>
-        <p id="phase">Waiting for server</p>
-        <p id="readyState">Ready - Black: X | White: X</p>
-        <button id="readyBtn" type="button">Ready</button>
-    </section>
+    <section class="main-grid">
+        <aside class="log-aside">
+            <h2>로그</h2>
+            <div id="log" class="log"></div>
+        </aside>
 
-    <canvas id="board"></canvas>
-
-    <section class="panel">
-        <h2>Log</h2>
-        <div id="log" class="log"></div>
+        <section class="board-area">
+            <p id="phase">진행 상태: 대기</p>
+            <div class="board-wrap">
+                <canvas id="board"></canvas>
+                <div id="winnerNotice" class="winner-notice" hidden></div>
+            </div>
+        </section>
     </section>
 </main>
 

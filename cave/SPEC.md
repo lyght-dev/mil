@@ -1,8 +1,8 @@
-# Cave Omok MVP Spec
+# Cave Socket Test MVP Spec
 
 ## 1. Overview
 
-This directory contains a minimal online omok game.
+This directory contains a minimal online socket test game.
 
 - Runtime server: PowerShell (`server.ps1`)
 - Worker module: PowerShell module (`worker.psm1`)
@@ -15,10 +15,10 @@ This directory contains a minimal online omok game.
 Included:
 
 - Single room
-- 15x15 free-rule omok
+- 15x15 free-rule board game
 - Role assignment for first two players (`black`, `white`)
 - Spectator join support
-- Manual restart after win (`ready`)
+- Ready handshake required before first start and each restart
 
 Excluded:
 
@@ -100,7 +100,7 @@ Rules:
 
 - Server does not validate move order, board occupancy, or winner state
 - Frontend enforces turn and winner rules
-- Frontend restarts a round only when both `black` and `white` are `ready: true`
+- Frontend starts and restarts a round only when both `black` and `white` are `ready: true`
 
 ## 5. Gameplay Rules (Frontend)
 
@@ -110,7 +110,17 @@ Rules:
 - Free rule only (no forbidden move checks)
 - Spectator cannot place stones or set ready
 
-## 6. Assumptions
+## 6. UI Rules (Frontend)
+
+- Left `aside` shows connection logs and move logs.
+- Board outline uses high-contrast style and shows current turn (`black` or `white`).
+- Top area shows connection status, ready status, and my stone color.
+- Top menu color also reflects my stone color (`black`, `white`, `neutral`).
+- Page background uses a gray tone.
+- When game ends, a large winner notice is shown over the board.
+- Korean UI text is used.
+
+## 7. Assumptions
 
 - Trusted internal environment (minimal validation)
 - Late spectator does not receive full historical board replay

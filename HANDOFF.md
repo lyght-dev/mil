@@ -2,6 +2,16 @@
 
 ## 2026-03-26
 
+### 추가 작업 요약 (cave 게임 종료 대형 알림)
+- `cave/index.html` 보드 영역에 승리 오버레이 요소(`winnerNotice`)를 추가함.
+- `cave/style.css`에 `board-wrap`, `winner-notice` 스타일을 추가해 게임 종료 시 보드 중앙에 큰 승리 문구가 보이도록 구성함.
+- `cave/script.js`에 `setWinnerNotice`를 추가하고 `updateUi`에서 호출해 `gameOver` 상태일 때만 `흑 승리!`/`백 승리!` 알림을 표시하도록 연결함.
+- 라운드 시작/준비 대기 상태에서는 오버레이가 자동으로 숨겨지도록 처리함.
+- `cave/SPEC.md` UI 규칙에 게임 종료 대형 알림 표시를 반영함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/cave/script.js` 통과.
+
 ### 추가 작업 요약 (acs start 변수 script 상단화 + allowedMembers 강제 갱신)
 - `acs/server.ps1`에서 `Start-AcsServer`에서 선언되던 주요 런타임 변수(`AppRoot`, `LogPath`, `AllowedIds`, `SerialToMember`, `Prefix`)를 script 상단 변수로 선언하고 시작 시 값 할당 후 사용하도록 정리함.
 - 기존 path 흐름은 유지하고(`ListPath` 포함), 이미 있는 경로 변수 구조를 제거하지 않고 최소 수정으로 적용함.
