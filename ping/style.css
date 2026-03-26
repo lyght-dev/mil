@@ -1,16 +1,16 @@
 :root {
-  --bg: #f4f5f7;
-  --card: #fff;
-  --tx: #172b4d;
-  --mut: #6b778c;
-  --bd: #dfe1e6;
-  --bd2: #ebecf0;
-  --sbg: #e3fcef;
-  --sfg: #006644;
-  --tbg: #fffae6;
-  --tfg: #974f0c;
-  --xbg: #ffebe6;
-  --xfg: #bf2600;
+  --bg: #0d1117;
+  --card: #161b22;
+  --tx: #e6edf3;
+  --mut: #9da7b3;
+  --bd: #30363d;
+  --bd2: #21262d;
+  --sbg: #0f2d1c;
+  --sfg: #48d597;
+  --tbg: #3a2a0b;
+  --tfg: #f2c879;
+  --xbg: #3c1617;
+  --xfg: #ff8e8e;
 }
 
 * {
@@ -25,7 +25,7 @@ body {
 body {
   margin: 0;
   color: var(--tx);
-  background: radial-gradient(1200px 600px at 15% 10%, #fff 0, var(--bg) 55%) fixed;
+  background: var(--bg);
   font-family:
     -apple-system,
     BlinkMacSystemFont,
@@ -51,7 +51,6 @@ body {
   border: 1px solid var(--bd);
   border-radius: 12px;
   padding: 22px;
-  box-shadow: 0 1px 1px rgba(9, 30, 66, 0.05);
 }
 
 .hd {
@@ -78,7 +77,7 @@ h1 {
   border: 1px solid var(--bd2);
   border-radius: 10px;
   padding: 10px 12px;
-  background: linear-gradient(#fff, #fafbfc);
+  background: #0f141b;
 }
 
 .m {
@@ -122,7 +121,7 @@ h1 {
 .btn {
   appearance: none;
   border: 1px solid var(--bd);
-  background: #fff;
+  background: #0f141b;
   border-radius: 10px;
   padding: 10px 12px;
   font-weight: 600;
@@ -131,11 +130,11 @@ h1 {
 }
 
 .btn:hover {
-  background: #fafbfc;
+  background: #1b2330;
 }
 
 .btn:focus {
-  outline: 3px solid rgba(0, 82, 204, 0.25);
+  outline: 3px solid rgba(88, 166, 255, 0.3);
   outline-offset: 2px;
 }
 
@@ -157,7 +156,7 @@ h1 {
   width: 40px;
   height: 22px;
   border-radius: 999px;
-  background: #dfe1e6;
+  background: #30363d;
   border: 1px solid var(--bd);
   position: relative;
   transition: background 0.12s ease;
@@ -171,14 +170,13 @@ h1 {
   width: 18px;
   height: 18px;
   border-radius: 999px;
-  background: #fff;
-  box-shadow: 0 1px 1px rgba(9, 30, 66, 0.15);
+  background: #e6edf3;
   transition: transform 0.12s ease;
 }
 
 .tog input:checked + .ui {
-  background: #e6f0ff;
-  border-color: rgba(0, 82, 204, 0.25);
+  background: #204d7b;
+  border-color: #2f81f7;
 }
 
 .tog input:checked + .ui::after {
@@ -188,7 +186,9 @@ h1 {
 .tw {
   border: 1px solid var(--bd2);
   border-radius: 12px;
-  overflow: hidden;
+  max-height: 60vh;
+  overflow-y: auto;
+  overflow-x: auto;
 }
 
 .t {
@@ -201,9 +201,9 @@ h1 {
 .t thead th {
   text-align: left;
   padding: 12px 14px;
-  background: #fafbfc;
+  background: #0f141b;
   border-bottom: 1px solid var(--bd2);
-  color: #253858;
+  color: #c4ccd5;
   font-size: 12px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -216,7 +216,7 @@ h1 {
 }
 
 .t tbody tr:hover td {
-  background: #f7f8f9;
+  background: #1b2330;
 }
 
 .t tbody tr:last-child td {
@@ -242,19 +242,19 @@ h1 {
 .b.s {
   background: var(--sbg);
   color: var(--sfg);
-  border-color: rgba(0, 102, 68, 0.12);
+  border-color: rgba(72, 213, 151, 0.35);
 }
 
 .b.t {
   background: var(--tbg);
   color: var(--tfg);
-  border-color: rgba(151, 79, 12, 0.12);
+  border-color: rgba(242, 200, 121, 0.35);
 }
 
 .b.x {
   background: var(--xbg);
   color: var(--xfg);
-  border-color: rgba(191, 38, 0, 0.12);
+  border-color: rgba(255, 142, 142, 0.35);
 }
 
 .mono {
@@ -285,5 +285,9 @@ h1 {
 
   .ctl {
     flex-wrap: wrap;
+  }
+
+  .tw {
+    max-height: 50vh;
   }
 }
