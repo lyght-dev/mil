@@ -2,6 +2,25 @@
 
 ## 2026-03-26
 
+### 추가 작업 요약 (cave 오목 MVP)
+- `cave/` 디렉토리를 신규 추가하고 `server.ps1`, `worker.psm1`, `index.html`, `script.js`, `style.css`, `SPEC.md`를 작성함.
+- `cave/server.ps1`는 `http://+:4608/`에서 정적 파일(`/`, `/index.html`, `/script.js`, `/style.css`)과 `/ws` WebSocket 업그레이드를 처리함.
+- 서버는 게임 판정 없이 브로드캐스트 중심으로 동작하고, 접속 시 `welcome` 메시지와 `peer join/leave` 시스템 메시지를 전송함.
+- 역할은 첫 2명에 대해 `black/white`를 랜덤 1회 배정하고, 이후 접속자는 `spectator`로 할당함.
+- `cave/worker.psm1`에서 클라이언트 수신 메시지를 전체 브로드캐스트하고, 연결 종료 시 `peer leave` 메시지를 브로드캐스트하도록 구성함.
+- `cave/script.js`는 15x15 자유룰 오목(턴 교대, 5목 승리)을 FE에서 처리하고, 승리 후 `ready` 양측 true일 때만 새 판을 시작하도록 구현함.
+- `cave/SPEC.md`에 현재 MVP 계약(브로드캐스트 서버, FE 규칙 처리, 관전자/랜덤 역할/수동 재시작)을 문서화함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/cave/script.js` 통과.
+- `pwsh -NoLogo -NoProfile -Command "[void][scriptblock]::Create((Get-Content -LiteralPath '/workspaces/mil/cave/server.ps1' -Raw)); 'PARSE_OK'"` 확인.
+- `pwsh -NoLogo -NoProfile -Command "[void][scriptblock]::Create((Get-Content -LiteralPath '/workspaces/mil/cave/worker.psm1' -Raw)); 'PARSE_OK'"` 확인.
+- 서버 실행 후 정적/엔드포인트 확인:
+  - `GET /` -> `200`
+  - `GET /script.js` -> `200`
+  - `GET /style.css` -> `200`
+  - `GET /ws`(일반 HTTP 요청) -> `400`
+
 ### 추가 작업 요약 (acs access serial -> id 처리)
 - `acs/server.ps1`의 `Import-Members`에 `SerialToMember` 매핑 생성을 추가함.
 - `POST /access` 요청 본문 입력을 `id` 대신 `serial`로 읽도록 변경함.
