@@ -2,6 +2,54 @@
 
 ## 2026-03-26
 
+### 추가 작업 요약 (cave ready 게이트/메뉴 색/outline 보강)
+- `cave/script.js`에 `roundActive` 게이트를 추가해 접속 직후 자동 시작을 막고, 양측(`black`, `white`) ready가 모두 true일 때만 시작하도록 변경함.
+- 초기 시작과 승리 후 재시작 모두 동일하게 ready handshake를 요구하도록 통일함.
+- 진행 중 플레이어 이탈(`peer leave`) 시 라운드를 비활성화하고 해당 색 ready를 해제해 단독 진행을 방지함.
+- `cave/index.html`의 상단 메뉴에 역할 색 클래스 훅(`role-black`, `role-white`, `role-neutral`)을 추가함.
+- `cave/style.css`에서 상단 메뉴 역할 색 스타일을 추가해 내 돌 색을 상단 메뉴 색으로 구분 가능하게 함.
+- `cave/style.css`에서 `body`, 상단 패널, 로그 패널/로그 박스 배경 지정을 제거함(보드 배경은 유지).
+- 보드 outline을 더 명확히 보이도록 border/box-shadow 강도를 상향함.
+- `cave/SPEC.md`에 초기 시작도 ready handshake가 필요함을 반영하고 UI 규칙(메뉴 색, 배경 정책, outline 강화)을 갱신함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/cave/script.js` 통과.
+
+### 추가 작업 요약 (acs setting 서버 인라인 통합)
+- 사용자 요청에 따라 `setting.psm1` 분리 방식을 제거하고 setting API 구현을 `acs/server.ps1` 내부로 인라인 통합함.
+- `server.ps1`에 `###### setting begin ######` / `###### setting end ######` 경계 주석을 두고 setting 전용 로직 구역을 분리함.
+- `Import-Members`, `Save-Members`, `Sync-MemberCaches`, `Invoke-SettingApiRoute` 등을 `server.ps1`로 이동해 모듈 import 의존을 없앰.
+- `Read-JsonPayload` 공용 파서를 도입해 `/access`와 setting API가 같은 JSON 파싱 경로를 사용하도록 정리함.
+- `acs/setting.psm1` 파일은 제거함.
+
+### 추가 검증 메모
+- `pwsh` 파서 검사: `acs/server.ps1` -> `PARSE_OK`
+- `node --check /workspaces/mil/acs/setting.js` 통과.
+
+### 추가 작업 요약 (acs setting 서버/JS 실동작 연동)
+- `acs/setting.psm1`를 신규 추가해 설정 CRUD/재발급 API 구현을 서버 본문에서 분리함.
+  - `POST /setting/member/create`
+  - `POST /setting/member/update`
+  - `POST /setting/member/delete`
+  - `POST /setting/member/reissue`
+- `setting.psm1`에서 `list.json` 로드/저장, 6자리 serial 발급, `serialLastReissuedAtKst`(KST) 갱신, `AllowedIds`/`SerialToMember` 캐시 동기화를 처리함.
+- `acs/server.ps1`는 설정 API를 직접 구현하지 않고 `Import-Module ./setting.psm1` + `Invoke-SettingApiRoute` 위임 구조로 변경함.
+- `acs/server.ps1` 시작 시 `Sync-SettingMemberCaches`를 호출해 허용 ID/serial 캐시를 초기화하도록 변경함.
+- `acs/setting.js`의 CRUD/reissue 스텁을 실제 API 호출로 교체함.
+  - `create -> /setting/member/create`
+  - `update -> /setting/member/update`
+  - `delete -> /setting/member/delete`
+  - `reissue -> /setting/member/reissue`
+- `acs/setting.js` CRUD 성공 메시지를 `완료` 기준으로 정리함.
+- `acs/SPEC.md`에 setting CRUD API 연동 반영(정적 리소스 섹션/제외 범위 문구 보정).
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/acs/setting.js` 통과.
+- `pwsh` 파서 검사:
+  - `acs/server.ps1` -> `PARSE_OK`
+  - `acs/setting.psm1` -> `PARSE_OK`
+- 샌드박스 권한으로 `http://+:8888/` 리스너 시작 시 `Permission denied`가 발생해 런타임 HTTP 호출 검증은 완료하지 못함.
+
 ### 추가 작업 요약 (acs setting serial 시각 UI 전환)
 - `acs/setting.html`에서 serial 숫자 입력 필드와 `6자리 숫자 발급` 안내 문구를 제거함.
 - serial 영역을 `마지막 재발급 시각` + `serial 재발급` 버튼의 단일 행으로 재구성해 같은 맥락 UI로 배치함.
@@ -42,6 +90,21 @@
   - `GET /script.js` -> `200`
   - `GET /style.css` -> `200`
   - `GET /ws`(일반 HTTP 요청) -> `400`
+
+### 추가 작업 요약 (cave Socket Test UI 재구성)
+- `cave/index.html`, `cave/style.css`, `cave/script.js`를 수정해 화면을 `좌측 aside 로그 + 우측 보드` 구조로 재배치함.
+- 상단 상태 영역에 `연결 상태`, `준비 상태(흑/백)`, `내 돌 색`을 한국어로 고정 표시하도록 변경함.
+- 로그는 `[접속]`/`[착수]` 두 종류로 정리하고, 착수 시 `흑/백 + 좌표` 형식으로 누적 표시하도록 변경함.
+- 보드 outline 색으로 현재 차례를 표시하도록 변경함(흑 차례/백 차례별 테두리 색상 전환).
+- UI 문자열을 한국어로 통일하고, 타이틀/헤더의 `Omok` 표기를 `Socket Test`로 교체함.
+- `cave/SPEC.md` 제목과 UI 규칙 섹션을 갱신해 현재 화면 계약(aside 로그/턴 outline/상단 상태/한국어)을 반영함.
+
+### 추가 검증 메모
+- `rg -n "Omok|omok" /workspaces/mil/cave` 결과 없음 확인.
+- `node --check /workspaces/mil/cave/script.js` 통과.
+- `pwsh -NoLogo -NoProfile -Command "[void][scriptblock]::Create((Get-Content -LiteralPath '/workspaces/mil/cave/server.ps1' -Raw)); 'PARSE_OK'"` 확인.
+- `pwsh -NoLogo -NoProfile -Command "[void][scriptblock]::Create((Get-Content -LiteralPath '/workspaces/mil/cave/worker.psm1' -Raw)); 'PARSE_OK'"` 확인.
+- `rg -n "Task\.Run|Task|InitialSessionState|ImportPSModule|BeginInvoke" /workspaces/mil/cave/server.ps1`로 `Task` 미사용, `$iss + BeginInvoke` 경로 사용 확인.
 
 ### 추가 작업 요약 (acs access serial -> id 처리)
 - `acs/server.ps1`의 `Import-Members`에 `SerialToMember` 매핑 생성을 추가함.

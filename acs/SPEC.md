@@ -50,6 +50,7 @@ ACS의 목적은 다음과 같다.
 - CSV append-only 기록 저장
 - FE 로그 조회와 현재 인원 명단 조회
 - FE 설정 페이지 사용자 목록 렌더/검색과 CRUD UI 액션 후 `allowedMembers` 재조회
+- FE 설정 페이지 CRUD API 연동과 `list.json` 영속 수정
 
 ### 4.2 현재 단계 제외 범위
 
@@ -58,7 +59,6 @@ ACS의 목적은 다음과 같다.
 - 서버 측 location별 중복 예외 처리
 - 서버 측 현재 상태 관리 API
 - 서버 측 로그 검색, 정렬, 날짜 필터링
-- 설정 페이지의 CRUD API 연동과 `list.json` 영속 수정
 - 인증/인가
 - DB 연동
 - GUI
@@ -147,6 +147,10 @@ GET /setting.js
 GET /list.json
 GET /location.json
 GET /logs/access-log.csv
+POST /setting/member/create
+POST /setting/member/update
+POST /setting/member/delete
+POST /setting/member/reissue
 ```
 
 규칙:
@@ -154,7 +158,7 @@ GET /logs/access-log.csv
 - 서버는 위 파일을 그대로 서빙한다.
 - FE는 `list.json`, `location.json`, `logs/access-log.csv`를 직접 읽어 필요한 가공을 수행한다.
 - `logs/access-log.csv`는 원본 CSV 전체를 그대로 내려준다.
-- `setting.html`은 CRUD UI 렌더/검색/재조회까지 제공하며, CRUD API 호출은 연결하지 않는다.
+- `setting.html`은 CRUD UI 렌더/검색/재조회와 CRUD API 호출까지 수행한다.
 
 ### 8.2 입퇴영 요청
 

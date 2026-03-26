@@ -48,6 +48,16 @@
     }
   };
 
+  const postJson = (url, payload) => {
+    return fetchJson(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload || {})
+    });
+  };
+
   const showMessage = (text, tone) => {
     if (tone === "error") {
       console.error(text);
@@ -318,16 +328,15 @@
     return { id, name, unit };
   };
 
-  // API 연동 단계에서 구현할 CRUD 시그니처
-  const createMember = async member => ({ status: "pending", action: "create", member });
-  const updateMember = async (id, memberPatch) => ({ status: "pending", action: "update", id, memberPatch });
-  const deleteMember = async id => ({ status: "pending", action: "delete", id });
-  const reissueMemberSerial = async id => ({ status: "pending", action: "reissue", id });
+  const createMember = async member => postJson("/setting/member/create", member);
+  const updateMember = async (id, memberPatch) => postJson("/setting/member/update", { id, ...memberPatch });
+  const deleteMember = async id => postJson("/setting/member/delete", { id });
+  const reissueMemberSerial = async id => postJson("/setting/member/reissue", { id });
 
   const runCrudAction = async (actionName, task) => {
     try {
       await task();
-      showMessage(`${actionName} 요청을 처리했습니다. (API 미연결)`, "warn");
+      showMessage(`${actionName} 완료`, "ok");
     } catch (err) {
       showMessage(err?.message || `${actionName} 처리에 실패했습니다.`, "error");
     }
