@@ -1,5 +1,94 @@
 # HANDOFF
 
+## 2026-03-26
+
+### 작업 요약
+- `acs/setting.html`을 UI 스켈레톤에서 실제 동작 가능한 설정 화면으로 확장함.
+  - 사용자 추가 폼(`군번/이름/소속`), 검색 입력, 목록 재조회 버튼, 사용자 수정 dialog를 추가함.
+  - 목록 영역은 샘플 정적 row를 제거하고 `id="stg-body"` 렌더 타깃 기반으로 전환함.
+- `acs/setting.js`를 신규 로직으로 구현함.
+  - `allowedMembers` 상태(`list.json`) 로드/정규화/맵 캐시를 추가함.
+  - 검색은 `allowedMembers` 기준 `군번(id)`, `이름(name)`, `소속(unit)` 포함 매칭으로 처리함.
+  - CRUD UI 이벤트(`추가/수정/삭제`)를 연결하고, API 미연결 기본 시그니처(`createMember`, `updateMember`, `deleteMember`)를 제공함.
+  - CRUD 액션 이후 `reloadAllowedMembers()`로 `/list.json` 재조회 후 테이블 재렌더하도록 고정함.
+- `acs/setting.css`를 확장해 메시지 패널, 재조회 버튼, 행 액션 버튼, 수정 다이얼로그 입력 스타일을 보강함.
+- `acs/SPEC.md`를 현재 계약에 맞게 갱신함.
+  - 설정 페이지가 UI-only 1차(비활성) 상태에서 CRUD UI 렌더/검색/재조회 제공 단계로 바뀐 점을 반영함.
+  - 단, CRUD API 연동과 `list.json` 영속 수정은 여전히 제외 범위로 명시함.
+
+### 다음 세션 인계 포인트
+- 설정 페이지 CRUD는 UI 액션 + 재조회 흐름만 연결되어 있고, 실제 생성/수정/삭제 API 호출은 아직 비어 있다.
+- CRUD 액션 후에는 성공/실패와 무관하게 `reloadAllowedMembers()`가 실행되어 `/list.json` 기준으로 화면이 다시 맞춰진다.
+- 검색 기준은 `id`, `name`, `unit` 3개 필드다.
+
+### 검증 내역
+- `node --check /workspaces/mil/acs/setting.js`
+
+### 추가 작업 요약 (setting 폼 통합)
+- `acs/setting.html`에서 상단 안내 박스(`stg-notice`)를 제거함.
+- `acs/setting.html`의 수정 모달을 제거하고, 좌측 폼을 `추가/수정` 공용 폼으로 전환함.
+  - 폼 제목/submit 라벨을 모드에 따라 바꾸고, `수정 취소` 버튼으로 추가 모드 복귀를 지원함.
+- `acs/setting.js`의 편집 흐름을 모달 기반에서 단일 폼 모드 전환 기반으로 재구성함.
+  - `setEditMode()`가 좌측 폼에 값을 채우고 읽기전용 `id` 상태를 적용함.
+  - submit 시 현재 모드에 따라 `createMember` 또는 `updateMember` 시그니처를 호출함.
+  - 기존 CRUD 후 `reloadAllowedMembers()` 재조회 규칙은 유지함.
+- `acs/setting.css`에서 제거된 안내 박스 스타일을 정리하고, 공용 폼 액션 버튼 스타일을 추가함.
+
+### 추가 검증 내역
+- `node --check /workspaces/mil/acs/setting.js`
+
+### 추가 작업 요약 (처리 결과 박스 제거)
+- `acs/setting.html`에서 `처리 결과` 박스(`stg-msg-pnl`)를 제거함.
+- `acs/setting.css`에서 `stg-msg` 관련 스타일을 정리함.
+
+### 추가 검증 내역
+- `node --check /workspaces/mil/acs/setting.js`
+
+### 추가 작업 요약 (Info 중심 UI 전환)
+- `acs/setting.html` 좌측 패널을 단일 폼에서 `빈 상태/세부 Info/폼` 전환 구조로 변경함.
+  - 목록 행 클릭 시 좌측에 사용자 세부 정보(`군번/이름/소속`)가 표시되도록 구성함.
+  - 좌측 Info에 `수정`, `삭제` 버튼을 배치함.
+  - 우측 툴바에 `사용자 추가` 버튼을 추가하고, 클릭 시 좌측에 추가 form을 표시하도록 변경함.
+  - 목록의 `작업` 컬럼은 제거하고 행 클릭 중심 상호작용으로 단순화함.
+- `acs/setting.js` 상태 모델을 `panelMode(empty/info/edit/create)` + `selectedMemberId` 기준으로 재구성함.
+  - 행 클릭 -> Info 모드 진입
+  - Info `수정` -> Edit form 모드 진입
+  - 툴바 `사용자 추가` -> Create form 모드 진입
+  - Info `삭제` -> delete 시그니처 호출 + 재조회 후 선택 상태 복원/해제
+  - CRUD 이후 `/list.json` 재조회(`reloadAllowedMembers`) 규칙 유지
+- `acs/setting.css`에 Info 뷰/선택된 목록 행/좌측 액션 버튼 스타일을 추가하고, 기존 행 작업 버튼 스타일을 정리함.
+
+### 추가 검증 내역
+- `node --check /workspaces/mil/acs/setting.js`
+
+### 추가 작업 요약 (빈 상태 안내 박스 제거)
+- `acs/setting.html`에서 좌측 `목록에서 사용자를 선택해 주세요` 빈 상태 박스를 제거함.
+- `acs/setting.js`에서 `stg-empty-view` 참조와 빈 상태 토글 분기를 정리함.
+- `acs/setting.css`에서 `stg-empty-view` 스타일을 제거함.
+
+### 추가 검증 내역
+- `node --check /workspaces/mil/acs/setting.js`
+
+### 추가 작업 요약 (Info/Form 동시 노출 수정)
+- `acs/setting.css`에 `.stg-card [hidden] { display: none !important; }`를 추가함.
+- 원인: `.stg-form { display: grid; }`가 `hidden` 상태를 덮어써 Info와 form이 동시에 보이던 문제.
+- 수정 후 `panelMode` 전환 시 좌측에 Info 또는 form 중 하나만 보이도록 보정됨.
+
+### 추가 검증 내역
+- `node --check /workspaces/mil/acs/setting.js`
+
+### 추가 작업 요약 (단일 영역 Info/Form 통합)
+- `acs/setting.html` 좌측을 `Info 섹션 + Form 섹션` 전환 구조에서 단일 `form` 영역 구조로 재정리함.
+- 좌측은 항상 같은 입력 영역을 유지하고, 모드에 따라 읽기/편집 상태만 바뀌도록 변경함.
+  - `info`: 입력 readOnly + `수정/삭제` 버튼
+  - `edit`: `name/unit` 편집 + `수정 저장/취소` 버튼
+  - `create`: 전체 입력 편집 + `사용자 추가/취소` 버튼
+- `acs/setting.js` 상태 전환 로직을 `hidden section` 토글 대신 `panelMode`별 입력 readonly/버튼 표시 전환 방식으로 변경함.
+- `acs/setting.css`에서 구 Info 전용 스타일을 제거하고, `input[readonly]` 스타일을 추가해 같은 영역에서 info처럼 보이도록 조정함.
+
+### 추가 검증 내역
+- `node --check /workspaces/mil/acs/setting.js`
+
 ## 2026-03-25
 
 ### 작업 요약

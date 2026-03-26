@@ -49,6 +49,7 @@ ACS의 목적은 다음과 같다.
 - `list.json` 기반 허용 군번 검증
 - CSV append-only 기록 저장
 - FE 로그 조회와 현재 인원 명단 조회
+- FE 설정 페이지 사용자 목록 렌더/검색과 CRUD UI 액션 후 `allowedMembers` 재조회
 
 ### 4.2 현재 단계 제외 범위
 
@@ -57,7 +58,7 @@ ACS의 목적은 다음과 같다.
 - 서버 측 location별 중복 예외 처리
 - 서버 측 현재 상태 관리 API
 - 서버 측 로그 검색, 정렬, 날짜 필터링
-- 설정 페이지의 `list.json` 추가/삭제 동작 처리
+- 설정 페이지의 CRUD API 연동과 `list.json` 영속 수정
 - 인증/인가
 - DB 연동
 - GUI
@@ -74,6 +75,8 @@ ACS의 목적은 다음과 같다.
 - 스캐너 진입 시 `location.json` 후보 중 하나 선택
 - 요청에 `location` 포함
 - `list.json`을 직접 읽어 군번/이름 표시
+- 설정 페이지에서 `allowedMembers`(`list.json`) 기준 검색 수행
+- 설정 페이지 CRUD UI 액션 이후 `list.json`을 다시 조회해 `allowedMembers`를 갱신
 - `location.json`을 직접 읽어 스캐너 location 후보와 로그 표시 기준 구성
 - `logs/access-log.csv`를 직접 읽어 로그 추출
 - 로그 날짜 필터링, 검색, 정렬 수행
@@ -151,7 +154,7 @@ GET /logs/access-log.csv
 - 서버는 위 파일을 그대로 서빙한다.
 - FE는 `list.json`, `location.json`, `logs/access-log.csv`를 직접 읽어 필요한 가공을 수행한다.
 - `logs/access-log.csv`는 원본 CSV 전체를 그대로 내려준다.
-- `setting.html`은 1차 단계에서 레이아웃/디자인만 제공하고, 사용자 추가/삭제 기능은 연결하지 않는다.
+- `setting.html`은 CRUD UI 렌더/검색/재조회까지 제공하며, CRUD API 호출은 연결하지 않는다.
 
 ### 8.2 입퇴영 요청
 

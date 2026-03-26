@@ -19,35 +19,38 @@
       </div>
     </header>
 
-    <section class="panel stg-notice" aria-live="polite">
-      <strong>1차 구현 안내</strong>
-      <p>현재 화면은 레이아웃/디자인만 제공하며 실제 추가/삭제 동작은 다음 단계에서 연결됩니다.</p>
-    </section>
-
     <section class="stg-grid">
       <section class="panel stg-card">
-        <h2>사용자 추가</h2>
-        <form class="stg-form" novalidate>
-          <label class="field">
+        <h2 id="stg-panel-title">사용자 정보</h2>
+
+        <form id="stg-form" class="stg-form" novalidate>
+          <label class="field" for="stg-id">
             <span>군번</span>
-            <input type="text" autocomplete="off" placeholder="a25-76000001">
+            <input id="stg-id" name="id" type="text" autocomplete="off" placeholder="a25-76000001" required>
           </label>
-          <label class="field">
+          <label class="field" for="stg-name">
             <span>이름</span>
-            <input type="text" autocomplete="off" placeholder="홍길동">
+            <input id="stg-name" name="name" type="text" autocomplete="off" placeholder="홍길동" required>
           </label>
-          <label class="field">
+          <label class="field" for="stg-unit">
             <span>소속</span>
-            <input type="text" autocomplete="off" placeholder="통신중대">
+            <input id="stg-unit" name="unit" type="text" autocomplete="off" placeholder="통신중대" required>
           </label>
-          <button class="btn-pri" type="button" disabled>사용자 추가</button>
+          <div class="stg-form-actions">
+            <button id="stg-edit-btn" class="btn-pri" type="button">수정</button>
+            <button id="stg-delete-btn" class="btn-link stg-danger" type="button">삭제</button>
+            <button id="stg-save-btn" class="btn-pri" type="submit" hidden>저장</button>
+            <button id="stg-cancel-btn" class="btn-link stg-reset" type="button" hidden>취소</button>
+          </div>
         </form>
       </section>
 
       <section class="panel stg-card">
         <h2>사용자 목록</h2>
         <div class="stg-toolbar">
-          <input class="stg-search" type="text" autocomplete="off" placeholder="군번 또는 이름 검색 (2차 구현 예정)" disabled>
+          <input id="stg-search" class="stg-search" type="text" autocomplete="off" placeholder="군번, 이름, 소속 검색">
+          <button id="stg-reload" class="btn-link stg-reload" type="button">목록 재조회</button>
+          <button id="stg-add" class="btn-pri stg-add" type="button">사용자 추가</button>
         </div>
         <div class="stg-table-wrap">
           <table class="stg-table">
@@ -56,21 +59,11 @@
                 <th scope="col">군번</th>
                 <th scope="col">이름</th>
                 <th scope="col">소속</th>
-                <th scope="col">작업</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody id="stg-body">
               <tr>
-                <td>a25-76000001</td>
-                <td>김일병</td>
-                <td>통신중대</td>
-                <td><button class="btn-link stg-row-btn" type="button" disabled>삭제</button></td>
-              </tr>
-              <tr>
-                <td>a17-76000001</td>
-                <td>김대위</td>
-                <td>본부포대</td>
-                <td><button class="btn-link stg-row-btn" type="button" disabled>삭제</button></td>
+                <td colspan="3" class="empty-cell">명단을 불러오는 중입니다.</td>
               </tr>
             </tbody>
           </table>
