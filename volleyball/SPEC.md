@@ -43,6 +43,7 @@ WebSocket behavior:
 - Third and later clients receive `room_full` event and are disconnected
 - No periodic `state` stream in current mode
 - Server broadcasts `input_update` only when a player's input changes
+- Server broadcasts `ball_update` at fixed interval for ball position sync
 
 ## 4. WebSocket Messages
 
@@ -85,6 +86,20 @@ Server -> Client:
 }
 ```
 
+```json
+{
+  "type": "ball_update",
+  "phase": "playing",
+  "round": 12,
+  "ball": {
+    "x": 523.0,
+    "y": 214.5,
+    "vx": 3.2,
+    "vy": -1.75
+  }
+}
+```
+
 Possible `event.name` values:
 
 - `round_reset`
@@ -95,6 +110,11 @@ Possible `event.name` values:
 
 - Sent only when a player's input actually changes.
 - Client ignores `input_update` whose `role` is equal to its own role.
+
+`ball_update` rule:
+
+- Sent by server at fixed interval (current: ~15Hz).
+- Client uses it to update ball position and match phase/round display.
 
 ## 5. Gameplay Rules (MVP)
 

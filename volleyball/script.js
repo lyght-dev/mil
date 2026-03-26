@@ -367,6 +367,21 @@ function handleMessage(raw) {
     return;
   }
 
+  if (payload.type === "ball_update") {
+    if (payload.phase) {
+      state.phase = payload.phase;
+    }
+    if (typeof payload.round === "number") {
+      state.round = payload.round;
+    }
+    if (payload.ball) {
+      if (typeof payload.ball.x === "number") state.ball.x = payload.ball.x;
+      if (typeof payload.ball.y === "number") state.ball.y = payload.ball.y;
+    }
+    updateStatus();
+    return;
+  }
+
   if (payload.type === "input_update") {
     const role = payload.role;
     if (role !== "left" && role !== "right") {

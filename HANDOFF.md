@@ -1,5 +1,85 @@
 # HANDOFF
 
+## 2026-03-26
+
+### 작업 요약
+- `acs/setting.html`, `acs/setting.css`, `acs/setting.js`를 2차로 확장해 설정 페이지 UI를 실제 동작 상태로 정리함.
+- 설정 페이지에서 `allowedMembers`(`list.json`) 기준 사용자 목록 렌더와 검색(`군번/이름/소속`)을 지원함.
+- CRUD UI(`추가/수정/삭제`) 이벤트를 연결하되, API 호출은 제외하고 시그니처만 유지함.
+- CRUD 액션 이후에는 공통 후처리로 `allowedMembers` 재조회(`/list.json`)를 수행해 목록을 다시 렌더하도록 고정함.
+- `acs/SPEC.md`에서 설정 페이지 설명을 기존 1차 레이아웃 전용에서 UI 렌더/검색/재조회 단계로 갱신함.
+
+### 검증 메모
+- `node --check /workspaces/mil/acs/setting.js` 통과.
+
+### 추가 작업 요약 (ping UI 다크 테마/스크롤)
+- `ping/style.css`를 다크 테마 중심 색상 토큰으로 교체해 화면 전반을 관제용 어두운 톤으로 전환함.
+- `body`의 `radial-gradient`와 `meta`의 `linear-gradient`를 제거해 복잡한 시각 효과를 단색 기반으로 단순화함.
+- 버튼/토글/테이블 헤더/행 hover와 상태 배지(`success/timeout/error`)를 다크 배경 대비에 맞게 조정함.
+- 결과 영역 `.tw`에 `max-height`와 `overflow-y: auto`를 적용해 데이터 증가 시 테이블 본문만 스크롤되도록 고정함.
+- 모바일 구간(`max-width: 820px`)에서는 `.tw` 높이를 축소해 화면 가용 영역을 유지함.
+
+### 추가 검증 메모
+- `rg -n "gradient" /workspaces/mil/ping/style.css` 결과 없음 확인.
+
+### 추가 작업 요약 (volleyball 리시브 충돌)
+- `volleyball/server.ps1`에서 공-사각형 충돌 함수(`Resolve-BallRectCollision`)가 충돌 여부를 `bool`로 반환하도록 조정함.
+- 플레이어 전용 충돌 처리 함수 `Resolve-BallPlayerCollision`를 추가해 리시브 시 공 반사에 플레이어 위치 오프셋/상단 히트 업리프트를 반영함.
+- 게임 틱에서 좌/우 플레이어 충돌 호출을 공용 사각형 충돌 대신 `Resolve-BallPlayerCollision` 호출로 교체함.
+- 추가 보강: 충돌 누락 완화를 위해 접촉 경계 판정을 `>=`에서 `>`로 조정해 정확히 맞닿은 경우도 충돌로 처리함.
+- 추가 보강: 플레이어 충돌 반사를 절대속도 대신 상대속도(`ball - body`) 기준으로 계산해 이동 중 리시브 반응을 개선함.
+- 추가 보강: 볼 이동/충돌 검사를 틱당 2회 서브스텝으로 나눠 빠른 이동 시 충돌 스킵을 줄임.
+
+### 추가 검증 메모
+- `pwsh -NoLogo -NoProfile -Command "[void][scriptblock]::Create((Get-Content -LiteralPath '/workspaces/mil/volleyball/server.ps1' -Raw)); 'PARSE_OK'"` 확인.
+
+### 추가 작업 요약 (acs setting 폼 통합)
+- `acs/setting.html`의 상단 안내 박스를 제거함.
+- `acs/setting.html`, `acs/setting.js`에서 사용자 수정 흐름을 별도 모달이 아닌 좌측 폼 재사용 방식으로 변경함.
+- 좌측 폼은 `추가/수정` 모드 전환을 지원하고, 수정 취소 시 즉시 추가 모드로 복귀함.
+- CRUD 액션 후 `allowedMembers` 재조회(`/list.json`) 규칙은 유지함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/acs/setting.js` 통과.
+
+### 추가 작업 요약 (acs setting 처리 결과 박스 제거)
+- `acs/setting.html`의 `처리 결과` 박스를 제거함.
+- `acs/setting.css`에서 관련 메시지 박스 스타일을 제거함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/acs/setting.js` 통과.
+
+### 추가 작업 요약 (acs setting Info 중심 전환)
+- `acs/setting.html`, `acs/setting.js`를 수정해 목록 행 클릭 시 좌측이 사용자 세부 Info 창으로 동작하도록 변경함.
+- 좌측 Info에서 `수정`을 누르면 좌측이 수정 form으로 전환되고, `삭제` 버튼으로 삭제 흐름을 수행하도록 정리함.
+- 우측 툴바에 `사용자 추가` 버튼을 추가하고, 버튼 클릭으로 좌측 추가 form이 나타나도록 구성함.
+- 목록은 `작업` 컬럼을 제거하고 행 선택 중심으로 단순화했으며, CRUD 이후 `allowedMembers` 재조회 규칙은 유지함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/acs/setting.js` 통과.
+
+### 추가 작업 요약 (acs setting 빈 안내 박스 제거)
+- `acs/setting.html` 좌측의 `목록에서 사용자를 선택해 주세요` 안내 박스를 제거함.
+- `acs/setting.js`/`acs/setting.css`에서 해당 박스 관련 참조와 스타일을 정리함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/acs/setting.js` 통과.
+
+### 추가 작업 요약 (acs setting Info/Form 중복 노출 수정)
+- `acs/setting.css`에서 `hidden` 속성 우선 규칙을 추가해 좌측 Info/form이 동시에 보이던 문제를 수정함.
+- `.stg-form { display: grid; }`와의 충돌을 해소해 모드 전환 시 한 화면만 보이도록 정리함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/acs/setting.js` 통과.
+
+### 추가 작업 요약 (acs setting 단일 영역 전환)
+- `acs/setting.html`, `acs/setting.js`를 수정해 좌측을 단일 입력 영역으로 통합하고, 모드별(readonly/info/edit/create) 상태 전환만 수행하도록 변경함.
+- 사용자 row 선택 시 같은 입력 영역이 info 형태(readonly)로 보이고, 수정 시 동일 영역에서 곧바로 편집 가능하도록 UX를 정리함.
+- `acs/setting.css`에서 readonly 입력 시각을 info 카드처럼 보이게 보강함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/acs/setting.js` 통과.
+
 ## 2026-03-25
 
 ### 작업 요약
@@ -33,6 +113,11 @@
   - FE는 `welcome` 수신 시 즉시 `playing`으로 전환하고, `peer_left` 시 `waiting`으로 전환하도록 상태 전환을 로컬 이벤트 기반으로 변경함.
   - 서버의 `Build-StatePayload`/`state` 브로드캐스트 경로는 제거해, `{"type":"state",...}` 메시지가 더 이상 주기적으로 흘러오지 않게 정리함.
   - FE는 호환을 위해 `state` 수신 분기 코드는 유지하되, 실제 운영 모드는 `input_update` 기반으로 동작함.
+- 추가 수정: 공 움직임 동기화를 위해 `ball_update` 브로드캐스트를 복구함.
+  - 서버 틱은 유지하고, `ball_update`를 약 15Hz(66ms)로 브로드캐스트하도록 추가함.
+  - `ball_update` 페이로드에 `phase`, `round`, `ball(x,y,vx,vy)`를 포함함.
+  - FE는 `ball_update`를 수신해 공 좌표 및 라운드/phase 표시를 갱신함.
+  - `volleyball/SPEC.md`에 `ball_update` 계약을 추가함.
 
 ### 검증 메모
 - `pwsh -NoLogo -NoProfile -Command "[void][scriptblock]::Create((Get-Content -LiteralPath '/workspaces/mil/volleyball/server.ps1' -Raw)); 'PARSE_OK'"` 확인.
@@ -47,6 +132,7 @@
 - 추가 검증: `volleyball/server.ps1`, `volleyball/volleyball-worker.psm1` 파서 `PARSE_OK` 재확인.
 - 추가 검증: `volleyball/SPEC.md`를 현재 전송 모드(주기적 state 없음) 기준으로 갱신.
 - 운영 메모: 반영 확인 시 기존 서버 프로세스를 종료 후 재시작하고 브라우저 하드 리로드로 구버전 JS 캐시를 비운 뒤 확인 필요.
+- 추가 검증: `node --check /workspaces/mil/volleyball/script.js` 재확인 통과.
 
 ### 추가 작업 요약 (acs setting 1차)
 - `acs/setting.html`, `acs/setting.css`, `acs/setting.js`를 추가해 설정 페이지 레이아웃/디자인을 신규 구성함.

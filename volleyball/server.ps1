@@ -378,9 +378,9 @@ function Resolve-BallRectCollision {
         [Parameter(Mandatory = $true)]
         [double]$Restitution,
 
-        [double]$CarryX = 0.0,
+        [double]$SurfaceVx = 0.0,
 
-        [double]$CarryY = 0.0
+        [double]$SurfaceVy = 0.0
     )
 
     $nearestX = Clamp-Value -Value ([double]$Ball.x) -Min $RectX -Max ($RectX + $RectWidth)
@@ -391,8 +391,8 @@ function Resolve-BallRectCollision {
     $distSquared = ($dx * $dx) + ($dy * $dy)
     $radiusSquared = $Radius * $Radius
 
-    if ($distSquared -ge $radiusSquared) {
-        return
+    if ($distSquared -gt $radiusSquared) {
+        return $false
     }
 
     $nx = 0.0
@@ -424,15 +424,67 @@ function Resolve-BallRectCollision {
     $Ball.x += $nx * $penetration
     $Ball.y += $ny * $penetration
 
-    $approachVelocity = ($Ball.vx * $nx) + ($Ball.vy * $ny)
+    $approachVelocity = (($Ball.vx - $SurfaceVx) * $nx) + (($Ball.vy - $SurfaceVy) * $ny)
     if ($approachVelocity -lt 0.0) {
         $impulse = -(1.0 + $Restitution) * $approachVelocity
         $Ball.vx += $impulse * $nx
         $Ball.vy += $impulse * $ny
     }
 
-    $Ball.vx += $CarryX
-    $Ball.vy += $CarryY
+    return $true
+}
+
+function Resolve-BallPlayerCollision {
+    param(
+        [Parameter(Mandatory = $true)]
+        [hashtable]$Ball,
+
+        [Parameter(Mandatory = $true)]
+        [hashtable]$Body,
+
+        [Parameter(Mandatory = $true)]
+        [double]$PlayerWidth,
+
+        [Parameter(Mandatory = $true)]
+        [double]$PlayerHeight,
+
+        [Parameter(Mandatory = $true)]
+        [double]$Radius
+    )
+
+    $collided = Resolve-BallRectCollision `
+        -Ball $Ball `
+        -RectX ([double]$Body.x) `
+        -RectY ([double]$Body.y) `
+        -RectWidth $PlayerWidth `
+        -RectHeight $PlayerHeight `
+        -Radius $Radius `
+        -Restitution 0.95 `
+        -SurfaceVx ([double]$Body.vx) `
+        -SurfaceVy ([double]$Body.vy)
+
+    if (-not $collided) {
+        return
+    }
+
+    $centerX = [double]$Body.x + ($PlayerWidth / 2.0)
+    $offsetX = ([double]$Ball.x - $centerX) / ($PlayerWidth / 2.0)
+    $offsetX = Clamp-Value -Value $offsetX -Min -1.0 -Max 1.0
+    $Ball.vx += $offsetX * 1.8
+
+    $upperHit = [double]$Ball.y -le (([double]$Body.y) + ($PlayerHeight * 0.55))
+    if (-not $upperHit) {
+        return
+    }
+
+    $targetVy = -6.0
+    if ([double]$Body.vy -lt 0.0) {
+        $targetVy += [double]$Body.vy * 0.25
+    }
+
+    if ([double]$Ball.vy -gt $targetVy) {
+        $Ball.vy = $targetVy
+    }
 }
 
 function Sanitize-ClosedSlots {
@@ -460,7 +512,9 @@ function Invoke-GameTick {
         [hashtable]$RoomState,
 
         [Parameter(Mandatory = $true)]
-        [object]$Lock
+        [object]$Lock,
+
+        [bool]$ShouldBroadcastBall = $true
     )
 
     [System.Threading.Monitor]::Enter($Lock)
@@ -499,59 +553,65 @@ function Invoke-GameTick {
             Move-PlayerBody -Body $RoomState.rightBody -Input $rightInput -MinX ($netX + ($netWidth / 2.0)) -MaxX ($width - $playerWidth) -GroundY $groundY -PlayerHeight $playerHeight
 
             $ball = $RoomState.ball
-            $ball.vy += 0.5
-            $ball.x += $ball.vx
-            $ball.y += $ball.vy
-
-            if (($ball.x - $radius) -lt 0.0) {
-                $ball.x = $radius
-                $ball.vx = [Math]::Abs([double]$ball.vx) * 0.95
-            }
-
-            if (($ball.x + $radius) -gt $width) {
-                $ball.x = $width - $radius
-                $ball.vx = -[Math]::Abs([double]$ball.vx) * 0.95
-            }
-
-            if (($ball.y - $radius) -lt 0.0) {
-                $ball.y = $radius
-                $ball.vy = [Math]::Abs([double]$ball.vy) * 0.95
-            }
-
             $netLeft = $netX - ($netWidth / 2.0)
             $netTop = $groundY - $netHeight
-            Resolve-BallRectCollision -Ball $ball -RectX $netLeft -RectY $netTop -RectWidth $netWidth -RectHeight $netHeight -Radius $radius -Restitution 0.9
+            $subSteps = 2
+            $subGravity = 0.5 / $subSteps
 
-            Resolve-BallRectCollision `
-                -Ball $ball `
-                -RectX ([double]$RoomState.leftBody.x) `
-                -RectY ([double]$RoomState.leftBody.y) `
-                -RectWidth $playerWidth `
-                -RectHeight $playerHeight `
-                -Radius $radius `
-                -Restitution 0.95 `
-                -CarryX (([double]$RoomState.leftBody.vx) * 0.2) `
-                -CarryY (([Math]::Min([double]$RoomState.leftBody.vy, 0.0)) * 0.1)
+            for ($step = 0; $step -lt $subSteps; $step++) {
+                $ball.vy += $subGravity
+                $ball.x += ([double]$ball.vx / $subSteps)
+                $ball.y += ([double]$ball.vy / $subSteps)
 
-            Resolve-BallRectCollision `
-                -Ball $ball `
-                -RectX ([double]$RoomState.rightBody.x) `
-                -RectY ([double]$RoomState.rightBody.y) `
-                -RectWidth $playerWidth `
-                -RectHeight $playerHeight `
-                -Radius $radius `
-                -Restitution 0.95 `
-                -CarryX (([double]$RoomState.rightBody.vx) * 0.2) `
-                -CarryY (([Math]::Min([double]$RoomState.rightBody.vy, 0.0)) * 0.1)
+                if (($ball.x - $radius) -lt 0.0) {
+                    $ball.x = $radius
+                    $ball.vx = [Math]::Abs([double]$ball.vx) * 0.95
+                }
+
+                if (($ball.x + $radius) -gt $width) {
+                    $ball.x = $width - $radius
+                    $ball.vx = -[Math]::Abs([double]$ball.vx) * 0.95
+                }
+
+                if (($ball.y - $radius) -lt 0.0) {
+                    $ball.y = $radius
+                    $ball.vy = [Math]::Abs([double]$ball.vy) * 0.95
+                }
+
+                Resolve-BallRectCollision -Ball $ball -RectX $netLeft -RectY $netTop -RectWidth $netWidth -RectHeight $netHeight -Radius $radius -Restitution 0.9
+                Resolve-BallPlayerCollision -Ball $ball -Body $RoomState.leftBody -PlayerWidth $playerWidth -PlayerHeight $playerHeight -Radius $radius
+                Resolve-BallPlayerCollision -Ball $ball -Body $RoomState.rightBody -PlayerWidth $playerWidth -PlayerHeight $playerHeight -Radius $radius
+
+                if (($ball.y + $radius) -ge $groundY) {
+                    $winner = if ([double]$ball.x -lt $netX) { "right" } else { "left" }
+                    Add-PendingEvent -RoomState $RoomState -Name "round_reset" -Winner $winner
+                    $RoomState.round = [int]$RoomState.round + 1
+                    Reset-Round -RoomState $RoomState
+                    break
+                }
+            }
 
             $ball.vx = Clamp-Value -Value ([double]$ball.vx) -Min -18.0 -Max 18.0
             $ball.vy = Clamp-Value -Value ([double]$ball.vy) -Min -18.0 -Max 18.0
+        }
 
-            if (($ball.y + $radius) -ge $groundY) {
-                $winner = if ([double]$ball.x -lt $netX) { "right" } else { "left" }
-                Add-PendingEvent -RoomState $RoomState -Name "round_reset" -Winner $winner
-                $RoomState.round = [int]$RoomState.round + 1
-                Reset-Round -RoomState $RoomState
+        if ($ShouldBroadcastBall) {
+            $ballPayload = [ordered]@{
+                type = "ball_update"
+                phase = [string]$RoomState.phase
+                round = [int]$RoomState.round
+                ball = @{
+                    x = [Math]::Round([double]$RoomState.ball.x, 2)
+                    y = [Math]::Round([double]$RoomState.ball.y, 2)
+                    vx = [Math]::Round([double]$RoomState.ball.vx, 3)
+                    vy = [Math]::Round([double]$RoomState.ball.vy, 3)
+                }
+            }
+
+            foreach ($role in @("left", "right")) {
+                $slot = $players[$role]
+                if ($null -eq $slot) { continue }
+                [void](Send-VolleyMessage -Socket $slot.Socket -Payload $ballPayload)
             }
         }
 
@@ -966,7 +1026,9 @@ function Start-VolleyballServer {
     $lock = New-Object Object
     $handlers = New-Object System.Collections.ArrayList
     $tickIntervalMs = 33
+    $ballIntervalMs = 66
     $nextTick = [DateTime]::UtcNow
+    $nextBallBroadcast = [DateTime]::UtcNow
     $pendingContext = $null
 
     Write-Host ("Volleyball server listening on {0}" -f $prefix)
@@ -1007,7 +1069,15 @@ function Start-VolleyballServer {
 
             $now = [DateTime]::UtcNow
             if ($now -ge $nextTick) {
-                Invoke-GameTick -RoomState $roomState -Lock $lock
+                $shouldBroadcastBall = $false
+                if ($now -ge $nextBallBroadcast) {
+                    $shouldBroadcastBall = $true
+                    do {
+                        $nextBallBroadcast = $nextBallBroadcast.AddMilliseconds($ballIntervalMs)
+                    } while ($nextBallBroadcast -le $now)
+                }
+
+                Invoke-GameTick -RoomState $roomState -Lock $lock -ShouldBroadcastBall:$shouldBroadcastBall
 
                 do {
                     $nextTick = $nextTick.AddMilliseconds($tickIntervalMs)
