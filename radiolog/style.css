@@ -87,7 +87,8 @@ body {
 
 .field > span,
 .author-field > span,
-.editor-field > span {
+.editor-field > span,
+.slot-time-field > span {
   color: var(--text-muted);
   font-size: 0.75rem;
   letter-spacing: 0.03em;
@@ -97,7 +98,9 @@ body {
 input[type="date"],
 .author-field input[type="text"],
 .editor-field select,
-.editor-field input[type="text"] {
+.editor-field input[type="text"],
+.editor-field input[type="time"],
+.slot-time-field input[type="time"] {
   width: 100%;
   border: 1px solid var(--line-strong);
   border-radius: 8px;
@@ -113,7 +116,9 @@ input[type="date"],
 }
 
 .editor-field select,
-.editor-field input[type="text"] {
+.editor-field input[type="text"],
+.editor-field input[type="time"],
+.slot-time-field input[type="time"] {
   height: 26px;
   padding: 0 6px;
   font-size: 0.78rem;
@@ -122,7 +127,9 @@ input[type="date"],
 input[type="date"]:focus,
 .author-field input[type="text"]:focus,
 .editor-field select:focus,
-.editor-field input[type="text"]:focus {
+.editor-field input[type="text"]:focus,
+.editor-field input[type="time"]:focus,
+.slot-time-field input[type="time"]:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 4px var(--focus-ring);
@@ -250,6 +257,10 @@ button:hover {
   text-align: center;
 }
 
+.brigade-table .row-label {
+  width: 108px;
+}
+
 .matrix-cell {
   padding: 6px 5px;
   vertical-align: top;
@@ -292,6 +303,15 @@ button:hover {
 }
 
 .editor-field {
+  display: grid;
+  gap: 4px;
+}
+
+.editor-field.time-field {
+  grid-column: 1 / -1;
+}
+
+.slot-time-field {
   display: grid;
   gap: 4px;
 }

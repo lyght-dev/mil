@@ -569,3 +569,29 @@
 ### 추가 검증 메모
 - `node --check /workspaces/mil/radiolog/script.js` 통과.
 - `rg -n "\.cell-editor|카드형 래퍼" /workspaces/mil/radiolog/style.css /workspaces/mil/radiolog/SPEC.md`로 반영 확인.
+
+### 추가 작업 요약 (radiolog static milkit 예시 파일 추가)
+- 사용자 요청에 따라 `radiolog/server.ps1`를 static 서빙 방식으로 바꿨을 때의 예시를 `radiolog/eg.ps1`로 신규 작성함.
+- 예시는 `Add-Route`로 `GET /health`만 유지하고, 정적 리소스는 `Use-Static $app "/" "./" -DefaultDocument @("index.html")`로 일괄 서빙하도록 구성함.
+- 기존 서버의 실행 방식과 동일하게 `localhost`일 때 `http://+:{Port}/` prefix를 사용하고, 그 외에는 `-Port/-BindHost`로 실행하도록 맞춤.
+
+### 추가 검증 메모
+- `pwsh -NoLogo -NoProfile -Command '$null = [System.Management.Automation.Language.Parser]::ParseFile("/workspaces/mil/radiolog/eg.ps1",[ref]$null,[ref]$null); "ok"'` 실행 결과 `ok` 확인.
+
+### 추가 작업 요약 (radiolog 비고정 시간 입력 반영)
+- 사용자 요청에 맞춰 `radiolog/script.js`의 시간 슬롯 구조를 확장함.
+- `CF`는 기존 고정 5개(`08/10/12/14/16`)를 유지하고, 시간 직접입력 행 2개(`직접입력 1`, `직접입력 2`)를 추가함.
+- `F`는 기존 `12:00` 고정 표기를 행 공통 `input[type=time]` 입력으로 전환함(슬롯 키는 기존 데이터 호환을 위해 `12:00` 유지).
+- 사단망(`작전망/행정군수망 x 오전/오후`) 각 셀에 `실제시간` 입력(`input[type=time]`)을 추가함.
+- 행 데이터에 `recordedTime` 필드를 추가하고, 저장된 구버전 데이터 로드시 문자열이 아니면 빈값으로 정규화하도록 처리함.
+- 완료 판정을 확장함.
+- 공통 4필드(`송신/수신 감명도`, `관등`, `성명`)는 모든 행에서 필수.
+- 시간 필수 대상(`사단망 전체`, `CF 직접입력 2행`, `F 전체`)은 `recordedTime`까지 채워야 완료로 판정.
+- 여단망 수동 시간 입력은 행 머리글에서 받고, 같은 슬롯의 5개 대대 행에 동일 시간값을 동시 반영하도록 구현함.
+- `radiolog/style.css`에 시간 입력 UI를 위한 최소 스타일을 추가함(`.editor-field.time-field`, `.slot-time-field`, time input 포커스/크기 규칙, 여단 row-label 폭 조정).
+- `radiolog/SPEC.md`를 최신 정책으로 갱신함(총 44건 템플릿, 시간 입력 규칙, 완료 판정 규칙, `recordedTime` 저장 필드).
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/radiolog/script.js` 통과.
+- `rg -n "recordedTime|CF-직접입력|data-time-scope" /workspaces/mil/radiolog/script.js`로 핵심 반영 확인.
+- `rg -n "44건|직접입력|실제시간|시간 입력 대상" /workspaces/mil/radiolog/SPEC.md`로 문서 반영 확인.

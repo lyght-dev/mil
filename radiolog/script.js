@@ -7,8 +7,19 @@ const RANK_OPTIONS = ["", "이병", "일병", "상병", "병장"];
 const DIVISION_NETWORKS = ["작전망", "행정군수망"];
 const DIVISION_SLOTS = ["오전", "오후"];
 const BRIGADE_UNITS = ["0FA", "1FA", "2FA", "3FA", "4FA"];
-const BRIGADE_CF_SLOTS = ["08:00", "10:00", "12:00", "14:00", "16:00"];
-const BRIGADE_F_SLOTS = ["12:00"];
+const BRIGADE_CF_SLOTS = [
+  { slotKey: "08:00", label: "08:00", isManualTime: false },
+  { slotKey: "10:00", label: "10:00", isManualTime: false },
+  { slotKey: "12:00", label: "12:00", isManualTime: false },
+  { slotKey: "14:00", label: "14:00", isManualTime: false },
+  { slotKey: "16:00", label: "16:00", isManualTime: false },
+  { slotKey: "CF-직접입력-1", label: "직접입력 1", isManualTime: true },
+  { slotKey: "CF-직접입력-2", label: "직접입력 2", isManualTime: true }
+];
+const BRIGADE_F_SLOTS = [{ slotKey: "12:00", label: "직접입력", isManualTime: true }];
+const CF_MANUAL_SLOT_KEYS = BRIGADE_CF_SLOTS.filter((slot) => slot.isManualTime).map(
+  (slot) => slot.slotKey
+);
 
 const elements = {
   dateInput: document.querySelector("#date-input"),
@@ -57,16 +68,18 @@ function buildTemplateRows(dateString) {
     });
   });
 
-  BRIGADE_CF_SLOTS.forEach((slotLabel) => {
+  BRIGADE_CF_SLOTS.forEach((slot) => {
     BRIGADE_UNITS.forEach((unit) => {
-      rows.push(createTemplateRow(dateString, sequence, "여단망", "CF", slotLabel, unit));
+      rows.push(createTemplateRow(dateString, sequence, "여단망", "CF", slot.slotKey, unit));
       sequence += 1;
     });
   });
 
-  BRIGADE_UNITS.forEach((unit) => {
-    rows.push(createTemplateRow(dateString, sequence, "여단망", "F", "12:00", unit));
-    sequence += 1;
+  BRIGADE_F_SLOTS.forEach((slot) => {
+    BRIGADE_UNITS.forEach((unit) => {
+      rows.push(createTemplateRow(dateString, sequence, "여단망", "F", slot.slotKey, unit));
+      sequence += 1;
+    });
   });
 
   return rows;
@@ -89,6 +102,7 @@ function createTemplateRow(dateString, sequence, linkType, network, slotLabel, t
     rxSignal: "",
     counterpartyRank: "",
     counterpartyName: "",
+    recordedTime: "",
     updatedAt: ""
   };
 }
@@ -129,6 +143,7 @@ function normalizeRows(dateString, storedRows) {
       rxSignal: normalizeOptionValue(stored.rxSignal, SIGNAL_OPTIONS),
       counterpartyRank: normalizeOptionValue(stored.counterpartyRank, RANK_OPTIONS),
       counterpartyName: typeof stored.counterpartyName === "string" ? stored.counterpartyName : "",
+      recordedTime: typeof stored.recordedTime === "string" ? stored.recordedTime : "",
       updatedAt: typeof stored.updatedAt === "string" ? stored.updatedAt : ""
     };
   });
@@ -177,14 +192,44 @@ function saveAuthorFields() {
   localStorage.setItem(getAuthorStorageKey(state.currentDate), JSON.stringify(payload));
 }
 
+function isDivisionRow(row) {
+  return row.linkType === "사단망";
+}
+
+function isCfManualRow(row) {
+  return (
+    row.linkType === "여단망" &&
+    row.network === "CF" &&
+    CF_MANUAL_SLOT_KEYS.includes(row.slotLabel)
+  );
+}
+
+function isFRow(row) {
+  return row.linkType === "여단망" && row.network === "F";
+}
+
+function requiresRecordedTime(row) {
+  return isDivisionRow(row) || isCfManualRow(row) || isFRow(row);
+}
+
 function isRowComplete(row) {
-  return Boolean(
+  const hasBaseFields = Boolean(
     row.txSignal &&
       row.rxSignal &&
       row.counterpartyRank &&
       row.counterpartyName &&
       row.counterpartyName.trim()
   );
+
+  if (!hasBaseFields) {
+    return false;
+  }
+
+  if (!requiresRecordedTime(row)) {
+    return true;
+  }
+
+  return Boolean(row.recordedTime);
 }
 
 function escapeHtml(value) {
@@ -229,6 +274,12 @@ function renderEditorCell(row) {
 
   const complete = isRowComplete(row);
   const stateClass = complete ? "complete" : "pending";
+  const divisionTimeField = isDivisionRow(row)
+    ? `<label class="editor-field time-field">
+          <span>실제시간</span>
+          <input data-id="${escapeHtml(row.id)}" data-field="recordedTime" type="time" value="${escapeHtml(row.recordedTime)}" />
+        </label>`
+    : "";
 
   return `<td class="matrix-cell">
     <div class="cell-editor ${stateClass}" data-row-cell="${escapeHtml(row.id)}">
@@ -255,6 +306,7 @@ function renderEditorCell(row) {
           <span>성명</span>
           <input data-id="${escapeHtml(row.id)}" data-field="counterpartyName" type="text" value="${escapeHtml(row.counterpartyName)}" />
         </label>
+        ${divisionTimeField}
       </div>
     </div>
   </td>`;
@@ -274,14 +326,42 @@ function renderDivisionRows(lookup) {
     .join("");
 }
 
+function getBrigadeSlotTimeValue(lookup, network, slotKey) {
+  for (const unit of BRIGADE_UNITS) {
+    const row = findRow(lookup, "여단망", network, slotKey, unit);
+    if (row) {
+      return row.recordedTime || "";
+    }
+  }
+  return "";
+}
+
+function renderBrigadeSlotLabel(lookup, network, slot) {
+  if (!slot.isManualTime) {
+    return escapeHtml(slot.label);
+  }
+
+  const value = getBrigadeSlotTimeValue(lookup, network, slot.slotKey);
+  return `<label class="slot-time-field">
+    <span>${escapeHtml(slot.label)}</span>
+    <input
+      type="time"
+      data-time-scope="brigade-slot"
+      data-network="${escapeHtml(network)}"
+      data-slot="${escapeHtml(slot.slotKey)}"
+      value="${escapeHtml(value)}"
+    />
+  </label>`;
+}
+
 function renderBrigadeRows(lookup, network, slots, bodyElement) {
   bodyElement.innerHTML = slots
-    .map((slotLabel) => {
+    .map((slot) => {
       const cells = BRIGADE_UNITS
-        .map((unit) => renderEditorCell(findRow(lookup, "여단망", network, slotLabel, unit)))
+        .map((unit) => renderEditorCell(findRow(lookup, "여단망", network, slot.slotKey, unit)))
         .join("");
       return `<tr>
-        <th class="row-label" scope="row">${escapeHtml(slotLabel)}</th>
+        <th class="row-label" scope="row">${renderBrigadeSlotLabel(lookup, network, slot)}</th>
         ${cells}
       </tr>`;
     })
@@ -354,6 +434,35 @@ function updateRowField(target) {
   syncCellState(row);
 }
 
+function updateBrigadeSlotTime(target) {
+  const network = target.dataset.network;
+  const slot = target.dataset.slot;
+  if (!network || !slot) {
+    return;
+  }
+
+  const value = typeof target.value === "string" ? target.value : "";
+  let touched = false;
+
+  state.rows.forEach((row) => {
+    if (row.linkType !== "여단망") {
+      return;
+    }
+    if (row.network !== network || row.slotLabel !== slot) {
+      return;
+    }
+    row.recordedTime = value;
+    syncCellState(row);
+    touched = true;
+  });
+
+  if (!touched) {
+    return;
+  }
+
+  saveCurrentRows();
+}
+
 function handleAuthorInput(event) {
   if (!(event.target instanceof HTMLInputElement)) {
     return;
@@ -371,6 +480,12 @@ function handleRowsInput(event) {
   if (!(target instanceof HTMLInputElement) && !(target instanceof HTMLSelectElement)) {
     return;
   }
+
+  if (target instanceof HTMLInputElement && target.dataset.timeScope === "brigade-slot") {
+    updateBrigadeSlotTime(target);
+    return;
+  }
+
   if (!target.dataset.id || !target.dataset.field) {
     return;
   }
