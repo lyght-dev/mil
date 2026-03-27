@@ -1,18 +1,25 @@
 const STORAGE_DATE_KEY = "radiolog:selectedDate";
 const STORAGE_JOURNAL_PREFIX = "radiolog:journal:";
+const STORAGE_AUTHOR_PREFIX = "radiolog:author:";
 const SIGNAL_OPTIONS = ["", "1/1", "2/2", "3/3"];
 const RANK_OPTIONS = ["", "이병", "일병", "상병", "병장"];
+
+const DIVISION_NETWORKS = ["작전망", "행정군수망"];
+const DIVISION_SLOTS = ["오전", "오후"];
 const BRIGADE_UNITS = ["0FA", "1FA", "2FA", "3FA", "4FA"];
+const BRIGADE_CF_SLOTS = ["08:00", "10:00", "12:00", "14:00", "16:00"];
+const BRIGADE_F_SLOTS = ["12:00"];
 
 const elements = {
   dateInput: document.querySelector("#date-input"),
   todayButton: document.querySelector("#today-btn"),
   resetButton: document.querySelector("#reset-btn"),
-  totalCount: document.querySelector("#total-count"),
-  doneCount: document.querySelector("#done-count"),
-  pendingCount: document.querySelector("#pending-count"),
-  saveStatus: document.querySelector("#save-status"),
-  rowsBody: document.querySelector("#rows")
+  authorAm: document.querySelector("#author-am"),
+  authorPm: document.querySelector("#author-pm"),
+  journalBlocks: document.querySelector("#journal-blocks"),
+  divisionBody: document.querySelector("#division-body"),
+  brigadeCfBody: document.querySelector("#brigade-cf-body"),
+  brigadeFBody: document.querySelector("#brigade-f-body")
 };
 
 const state = {
@@ -35,18 +42,22 @@ function getStorageKey(dateString) {
   return `${STORAGE_JOURNAL_PREFIX}${dateString}`;
 }
 
+function getAuthorStorageKey(dateString) {
+  return `${STORAGE_AUTHOR_PREFIX}${dateString}`;
+}
+
 function buildTemplateRows(dateString) {
   const rows = [];
   let sequence = 1;
 
-  ["작전망", "행정군수망"].forEach((network) => {
-    ["오전", "오후"].forEach((slotLabel) => {
+  DIVISION_NETWORKS.forEach((network) => {
+    DIVISION_SLOTS.forEach((slotLabel) => {
       rows.push(createTemplateRow(dateString, sequence, "사단망", network, slotLabel, "1DIV"));
       sequence += 1;
     });
   });
 
-  ["08:00", "10:00", "12:00", "14:00", "16:00"].forEach((slotLabel) => {
+  BRIGADE_CF_SLOTS.forEach((slotLabel) => {
     BRIGADE_UNITS.forEach((unit) => {
       rows.push(createTemplateRow(dateString, sequence, "여단망", "CF", slotLabel, unit));
       sequence += 1;
@@ -133,7 +144,37 @@ function normalizeOptionValue(value, options) {
 function saveCurrentRows() {
   localStorage.setItem(getStorageKey(state.currentDate), JSON.stringify(state.rows));
   localStorage.setItem(STORAGE_DATE_KEY, state.currentDate);
-  setSaveStatus(`자동 저장: ${new Date().toLocaleString("ko-KR", { hour12: false })}`);
+}
+
+function readStoredAuthors(dateString) {
+  const raw = localStorage.getItem(getAuthorStorageKey(dateString));
+  if (!raw) {
+    return { am: "", pm: "" };
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    return {
+      am: typeof parsed?.am === "string" ? parsed.am : "",
+      pm: typeof parsed?.pm === "string" ? parsed.pm : ""
+    };
+  } catch (error) {
+    return { am: "", pm: "" };
+  }
+}
+
+function loadAuthorFields(dateString) {
+  const author = readStoredAuthors(dateString);
+  elements.authorAm.value = author.am;
+  elements.authorPm.value = author.pm;
+}
+
+function saveAuthorFields() {
+  const payload = {
+    am: elements.authorAm.value || "",
+    pm: elements.authorPm.value || ""
+  };
+  localStorage.setItem(getAuthorStorageKey(state.currentDate), JSON.stringify(payload));
 }
 
 function isRowComplete(row) {
@@ -144,20 +185,6 @@ function isRowComplete(row) {
       row.counterpartyName &&
       row.counterpartyName.trim()
   );
-}
-
-function updateSummary() {
-  const total = state.rows.length;
-  const done = state.rows.filter((row) => isRowComplete(row)).length;
-  const pending = total - done;
-
-  elements.totalCount.textContent = String(total);
-  elements.doneCount.textContent = String(done);
-  elements.pendingCount.textContent = String(pending);
-}
-
-function setSaveStatus(message) {
-  elements.saveStatus.textContent = message;
 }
 
 function escapeHtml(value) {
@@ -179,49 +206,93 @@ function renderSelectOptions(options, selectedValue) {
     .join("");
 }
 
-function formatUpdatedAt(value) {
-  if (!value) {
-    return "-";
-  }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return "-";
-  }
-  return date.toLocaleString("ko-KR", { hour12: false });
+function getRowKey(linkType, network, slotLabel, targetUnit) {
+  return `${linkType}|${network}|${slotLabel}|${targetUnit}`;
 }
 
-function renderRows() {
-  elements.rowsBody.innerHTML = state.rows
-    .map((row) => {
-      const rowClass = isRowComplete(row) ? "" : ' class="pending"';
-      return `<tr data-id="${escapeHtml(row.id)}"${rowClass}>
-        <td class="center">${row.sequence}</td>
-        <td class="center">${escapeHtml(row.linkType)}</td>
-        <td class="center">${escapeHtml(row.network)}</td>
-        <td class="center">${escapeHtml(row.slotLabel)}</td>
-        <td class="center">${escapeHtml(row.targetUnit)}</td>
-        <td>
+function createRowLookup(rows) {
+  const lookup = new Map();
+  rows.forEach((row) => {
+    lookup.set(getRowKey(row.linkType, row.network, row.slotLabel, row.targetUnit), row);
+  });
+  return lookup;
+}
+
+function findRow(lookup, linkType, network, slotLabel, targetUnit) {
+  return lookup.get(getRowKey(linkType, network, slotLabel, targetUnit)) || null;
+}
+
+function renderEditorCell(row) {
+  if (!row) {
+    return '<td class="matrix-cell"><div class="cell-editor missing">-</div></td>';
+  }
+
+  const complete = isRowComplete(row);
+  const stateClass = complete ? "complete" : "pending";
+
+  return `<td class="matrix-cell">
+    <div class="cell-editor ${stateClass}" data-row-cell="${escapeHtml(row.id)}">
+      <div class="editor-grid">
+        <label class="editor-field">
+          <span>송신</span>
           <select data-id="${escapeHtml(row.id)}" data-field="txSignal">
             ${renderSelectOptions(SIGNAL_OPTIONS, row.txSignal)}
           </select>
-        </td>
-        <td>
+        </label>
+        <label class="editor-field">
+          <span>수신</span>
           <select data-id="${escapeHtml(row.id)}" data-field="rxSignal">
             ${renderSelectOptions(SIGNAL_OPTIONS, row.rxSignal)}
           </select>
-        </td>
-        <td>
+        </label>
+        <label class="editor-field">
+          <span>관등</span>
           <select data-id="${escapeHtml(row.id)}" data-field="counterpartyRank">
             ${renderSelectOptions(RANK_OPTIONS, row.counterpartyRank)}
           </select>
-        </td>
-        <td>
+        </label>
+        <label class="editor-field">
+          <span>성명</span>
           <input data-id="${escapeHtml(row.id)}" data-field="counterpartyName" type="text" value="${escapeHtml(row.counterpartyName)}" />
-        </td>
-        <td class="time">${escapeHtml(formatUpdatedAt(row.updatedAt))}</td>
+        </label>
+      </div>
+    </div>
+  </td>`;
+}
+
+function renderDivisionRows(lookup) {
+  elements.divisionBody.innerHTML = DIVISION_NETWORKS
+    .map((network) => {
+      const cells = DIVISION_SLOTS
+        .map((slotLabel) => renderEditorCell(findRow(lookup, "사단망", network, slotLabel, "1DIV")))
+        .join("");
+      return `<tr>
+        <th class="row-label" scope="row">${escapeHtml(network)}</th>
+        ${cells}
       </tr>`;
     })
     .join("");
+}
+
+function renderBrigadeRows(lookup, network, slots, bodyElement) {
+  bodyElement.innerHTML = slots
+    .map((slotLabel) => {
+      const cells = BRIGADE_UNITS
+        .map((unit) => renderEditorCell(findRow(lookup, "여단망", network, slotLabel, unit)))
+        .join("");
+      return `<tr>
+        <th class="row-label" scope="row">${escapeHtml(slotLabel)}</th>
+        ${cells}
+      </tr>`;
+    })
+    .join("");
+}
+
+function renderTables() {
+  const lookup = createRowLookup(state.rows);
+  renderDivisionRows(lookup);
+  renderBrigadeRows(lookup, "CF", BRIGADE_CF_SLOTS, elements.brigadeCfBody);
+  renderBrigadeRows(lookup, "F", BRIGADE_F_SLOTS, elements.brigadeFBody);
 }
 
 function loadDate(dateString) {
@@ -232,8 +303,8 @@ function loadDate(dateString) {
   state.rows = rows;
   elements.dateInput.value = dateString;
 
-  renderRows();
-  updateSummary();
+  loadAuthorFields(dateString);
+  renderTables();
 
   if (!storedRows) {
     saveCurrentRows();
@@ -241,7 +312,27 @@ function loadDate(dateString) {
   }
 
   localStorage.setItem(STORAGE_DATE_KEY, dateString);
-  setSaveStatus(`불러오기 완료: ${new Date().toLocaleString("ko-KR", { hour12: false })}`);
+}
+
+function findCellElement(rowId) {
+  const cells = document.querySelectorAll("[data-row-cell]");
+  for (const cell of cells) {
+    if (cell.dataset.rowCell === rowId) {
+      return cell;
+    }
+  }
+  return null;
+}
+
+function syncCellState(row) {
+  const cell = findCellElement(row.id);
+  if (!cell) {
+    return;
+  }
+
+  const complete = isRowComplete(row);
+  cell.classList.toggle("pending", !complete);
+  cell.classList.toggle("complete", complete);
 }
 
 function updateRowField(target) {
@@ -258,20 +349,21 @@ function updateRowField(target) {
 
   const value = typeof target.value === "string" ? target.value : "";
   row[field] = value;
-  row.updatedAt = new Date().toISOString();
 
   saveCurrentRows();
+  syncCellState(row);
+}
 
-  const tr = target.closest("tr");
-  if (tr) {
-    tr.classList.toggle("pending", !isRowComplete(row));
-    const updatedAtCell = tr.querySelector(".time");
-    if (updatedAtCell) {
-      updatedAtCell.textContent = formatUpdatedAt(row.updatedAt);
-    }
+function handleAuthorInput(event) {
+  if (!(event.target instanceof HTMLInputElement)) {
+    return;
   }
 
-  updateSummary();
+  if (event.target !== elements.authorAm && event.target !== elements.authorPm) {
+    return;
+  }
+
+  saveAuthorFields();
 }
 
 function handleRowsInput(event) {
@@ -304,13 +396,14 @@ function handleResetClick() {
 
   state.rows = buildTemplateRows(state.currentDate);
   saveCurrentRows();
-  renderRows();
-  updateSummary();
+  renderTables();
 }
 
 function initialize() {
-  elements.rowsBody.addEventListener("input", handleRowsInput);
-  elements.rowsBody.addEventListener("change", handleRowsInput);
+  elements.journalBlocks.addEventListener("input", handleRowsInput);
+  elements.journalBlocks.addEventListener("change", handleRowsInput);
+  elements.authorAm.addEventListener("input", handleAuthorInput);
+  elements.authorPm.addEventListener("input", handleAuthorInput);
   elements.dateInput.addEventListener("change", handleDateChange);
   elements.todayButton.addEventListener("click", handleTodayClick);
   elements.resetButton.addEventListener("click", handleResetClick);
