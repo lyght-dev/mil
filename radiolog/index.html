@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>무선 일지 관리</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="page">
+    <header class="report-header">
+      <div class="title-block">
+        <p class="doc-label">보고서 양식</p>
+        <h1>무선 일지 관리</h1>
+        <p class="doc-note">부대: 1DIV / 0FA / 1FA / 2FA / 3FA / 4FA</p>
+      </div>
+      <div class="control-block">
+        <label class="field">
+          <span>기준일</span>
+          <input id="date-input" type="date" />
+        </label>
+        <div class="actions">
+          <button id="today-btn" type="button">오늘</button>
+          <button id="reset-btn" type="button">해당일 양식 재생성</button>
+        </div>
+      </div>
+    </header>
+
+    <section class="summary" aria-label="요약">
+      <dl>
+        <dt>총 건수</dt>
+        <dd id="total-count">0</dd>
+      </dl>
+      <dl>
+        <dt>입력 완료</dt>
+        <dd id="done-count">0</dd>
+      </dl>
+      <dl>
+        <dt>미완료</dt>
+        <dd id="pending-count">0</dd>
+      </dl>
+      <p id="save-status" class="save-status">저장 대기</p>
+    </section>
+
+    <section class="table-shell">
+      <table aria-label="무선 일지 입력표">
+        <thead>
+          <tr>
+            <th>번호</th>
+            <th>망 구분</th>
+            <th>망</th>
+            <th>점검 구분</th>
+            <th>상대 부대</th>
+            <th>송신 감명도</th>
+            <th>수신 감명도</th>
+            <th>상대 관등</th>
+            <th>상대 성명</th>
+            <th>최종 수정</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </section>
+  </main>
+  <script src="script.js"></script>
+</body>
+</html>

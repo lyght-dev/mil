@@ -375,3 +375,27 @@
 ### 다음 세션 인계 포인트
 - 루트 `AUDIT.md`는 저장소 전반에서 공통으로 따를 감사 기준 문서다.
 - 각 작업 디렉토리의 `SPEC.md`와 함께 루트 `AUDIT.md`를 먼저 확인하는 흐름으로 사용하면 된다.
+
+## 2026-03-27
+
+### 작업 요약 (radiolog 신규)
+- `radiolog/` 디렉토리를 신규 추가하고 `index.html`, `style.css`, `script.js`, `SPEC.md`를 작성함.
+- UI를 보고서형 표 중심으로 구성하고, 송신/수신 감명도 및 상대 교신자 관등/성명 입력을 행 단위로 관리하도록 구현함.
+- 날짜별 `localStorage` 키(`radiolog:journal:<YYYY-MM-DD>`)와 마지막 선택 날짜 키(`radiolog:selectedDate`)를 사용하도록 구현함.
+- 선택 날짜 데이터가 없으면 고정 템플릿 34건(사단망 4건 + 여단망 CF 25건 + 여단망 F 5건)을 자동 생성하도록 구현함.
+- 행 입력 변경 시 즉시 자동 저장, 완료/미완료 집계를 즉시 갱신하도록 구현함.
+
+### 추가 작업 요약 (milkit 서버)
+- `radiolog/server.ps1`를 추가해 `milkit/milkit.psm1` 기반으로 서버를 실행하도록 구성함.
+- `GET /`, `GET /index.html`, `GET /style.css`, `GET /script.js`, `GET /health`를 명시 라우트로 등록함.
+- 사용자 보고 `not found` 이슈 대응으로 `/` 및 정적 파일을 `Send-LocalTextFile`로 직접 응답하도록 조정함.
+- `localhost:9070`에서 `Not Found`가 뜨는 문제를 재현하고, 기본 바인딩을 `127.0.0.1`에서 `localhost`로 변경함.
+- 이후 기본 실행 프리픽스를 `http://+:{PORT}/`로 전환해 Host 헤더(`localhost`/`127.0.0.1`) 차이 없이 같은 라우트로 수신되게 정리함.
+
+### 검증 메모
+- `node --check /workspaces/mil/radiolog/script.js` 통과.
+- `pwsh -NoLogo -NoProfile -Command "[void][scriptblock]::Create((Get-Content -LiteralPath '/workspaces/mil/radiolog/server.ps1' -Raw)); 'PARSE_OK'"` 확인.
+- 샌드박스 제한으로 기본 환경에서는 로컬 포트 바인딩이 `Permission denied`가 발생할 수 있음.
+- 권한 상승 재현에서 확인:
+  - 수정 전: `curl http://localhost:9070/` -> `404 Not Found`, `curl http://127.0.0.1:9070/` -> `200`
+  - 수정 후(`http://+:{PORT}/`): `curl http://localhost:9070/` -> `200`, `curl http://127.0.0.1:9070/` -> `200`
