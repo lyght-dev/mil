@@ -399,3 +399,116 @@
 - 권한 상승 재현에서 확인:
   - 수정 전: `curl http://localhost:9070/` -> `404 Not Found`, `curl http://127.0.0.1:9070/` -> `200`
   - 수정 후(`http://+:{PORT}/`): `curl http://localhost:9070/` -> `200`, `curl http://127.0.0.1:9070/` -> `200`
+
+### 추가 작업 요약 (radiolog 블록형 UI 재구성)
+- `radiolog/index.html`을 단일 테이블에서 3개 블록(`사단망`, `여단망 CF`, `여단망 F`) 구조로 변경함.
+- 사단망은 `망(행) x 오전/오후(열)` 교차표로 렌더링하도록 전환함.
+- 여단망은 `시간(행) x 대대(열)` 매트릭스로 렌더링하도록 전환하고, `CF`/`F`를 별도 표로 분리함.
+- 각 셀에서 기존 입력 방식(`송신/수신/관등 select + 성명 input`)을 그대로 유지함.
+- `radiolog/script.js` 렌더러를 재구성해 블록별 tbody(`division/cf/f`)를 생성하고, 기존 로컬스토리지 저장 스키마는 유지함.
+- 셀 단위 변경 시 즉시 저장/요약 갱신/셀 상태(pending/complete)/최종 수정 시각 갱신이 동작하도록 정리함.
+- `radiolog/style.css`를 블록형 표 레이아웃에 맞게 조정해 보고서형 시각 톤을 유지함.
+- `radiolog/SPEC.md`의 UI 규칙을 블록 분리 및 매트릭스 구조 기준으로 갱신함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/radiolog/script.js` 통과.
+- 선택자 점검: `#journal-blocks`, `#division-body`, `#brigade-cf-body`, `#brigade-f-body`가 `index.html`/`script.js`에서 일치함을 확인.
+
+### 추가 작업 요약 (radiolog 셀 입력 2줄 고정 / 수정시각 제거)
+- 셀 입력 배치를 `송신/수신` 1줄, `관등/성명` 1줄 구조로 변경함.
+- `radiolog/script.js`에서 셀 하단 `최신 수정 시각` 출력(`.updated-at`)을 제거함.
+- 입력 변경 시 `row.updatedAt`를 갱신하던 로직을 제거함.
+- `radiolog/style.css`에서 `.name-field`, `.updated-at` 관련 스타일을 제거해 2x2 그리드 입력 배치를 고정함.
+- `radiolog/SPEC.md`에 2줄 입력 고정 및 수정시각 미표시 규칙을 반영함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/radiolog/script.js` 통과.
+- `rg -n "updated-at|name-field|row.updatedAt" /workspaces/mil/radiolog/script.js /workspaces/mil/radiolog/style.css` 결과 제거 확인.
+
+### 추가 작업 요약 (radiolog 레이블 헤딩 계층 전환)
+- `journal-blocks` 구조에서 카드/박스형 래퍼를 제거하고 `헤딩 + 매트릭스` 연속 배치로 전환함.
+- 레이블 체계를 `h1: 사단망/여단망`, `h2: CF/F` 계층으로 변경함.
+- `style.css`에서 기존 전역 `h1` 스타일을 `.title-block h1`로 스코프 제한해 문서 제목과 섹션 헤딩 스타일 충돌을 분리함.
+- 섹션 헤딩용 `.matrix-major`, `.matrix-minor` 스타일을 추가해 헤딩 계층 시각 구분을 명확히 함.
+- `radiolog/SPEC.md` UI 규칙을 헤딩 계층 기반 레이블 규칙으로 갱신함.
+
+### 추가 검증 메모
+- `index.html` 기준 `h1.matrix-major` 2개(사단망/여단망), `h2.matrix-minor` 2개(CF/F) 구조 반영 확인.
+- 테이블 `tbody` id(`division-body`, `brigade-cf-body`, `brigade-f-body`) 유지 확인.
+
+### 추가 작업 요약 (radiolog Desktop 고정폭 매트릭스)
+- 매트릭스가 Desktop 화면 폭을 넘지 않도록 `table-layout: fixed` 기반으로 조정함.
+- `.division-table`, `.brigade-table`, `.cell-editor`의 `min-width` 의존을 제거함.
+- 표 헤더/행 라벨/셀 내부 입력 컨트롤 크기를 축소해 0FA~4FA 컬럼이 한 화면에 들어오도록 조정함.
+- `table-shell`의 수평 스크롤 의존을 제거(`overflow-x: visible`)함.
+- 불필요한 반응형 미디어쿼리(`@media (max-width: 900px)`)를 제거함.
+- `radiolog/SPEC.md`에 Desktop 전용 고정 레이아웃/미디어쿼리 미사용 규칙을 반영함.
+
+### 추가 검증 메모
+- `style.css`에서 `@media`, `min-width: 1520px`, `min-width: 228px` 제거 확인.
+- `matrix-table`에 `table-layout: fixed` 적용 확인.
+
+### 추가 작업 요약 (summary 제거 / 작성자 기록 / Skyblue+Slate)
+- `radiolog/index.html`에서 summary 영역(총 건수/입력 완료/미완료/저장 상태)을 제거함.
+- summary 위치에 `작성자 기록` 섹션을 추가하고 `오전`, `오후` 작성자 입력 필드를 배치함.
+- `radiolog/script.js`에서 summary 관련 DOM/함수(`updateSummary`, `setSaveStatus`)를 제거함.
+- 작성자 저장을 날짜별로 추가함: `radiolog:author:<YYYY-MM-DD>` (`am`, `pm`).
+- 날짜 전환 시 해당 날짜 작성자 값을 로드하고, 작성자 입력 변경 시 즉시 localStorage에 저장하도록 연결함.
+- `radiolog/style.css` 색상 토큰을 Toss 스타일의 `Skyblue + Slate` 계열로 재정의하고 버튼/헤딩/표 헤더에 반영함.
+- `radiolog/SPEC.md`에 작성자 저장 키/summary 미사용/작성자 기록/컬러 테마 규칙을 반영함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/radiolog/script.js` 통과.
+- `rg -n "summary|total-count|done-count|pending-count|save-status|updateSummary|setSaveStatus" /workspaces/mil/radiolog/index.html /workspaces/mil/radiolog/script.js /workspaces/mil/radiolog/style.css` 결과 없음 확인.
+- `rg -n "author-am|author-pm|radiolog:author:" /workspaces/mil/radiolog/index.html /workspaces/mil/radiolog/script.js /workspaces/mil/radiolog/SPEC.md` 확인.
+
+### 추가 작업 요약 (현대적 Document 스타일 리디자인)
+- 기존 레이아웃 구조(`작성자 기록` + `헤딩 + 매트릭스`)는 유지한 채 시각 스타일만 전면 재정리함.
+- 디자인 톤을 Notion/Toss/Vercel 계열의 문서형 미니멀 스타일로 조정함.
+- 색상 팔레트는 Skyblue + Slate 기반 토큰으로 재구성하고 헤더/버튼/표 헤더/포커스 상태에 일관 적용함.
+- 표/입력 컴포넌트에 라운드/섀도우/포커스 링을 추가해 현대적 UI 톤을 보강함.
+- 타이포는 `1rem(16px)` 기준, 간격/크기는 4px 스케일 기준을 유지함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/radiolog/script.js` 통과.
+- `style.css`에서 `@media` 미사용 상태 유지 확인.
+- `style.css`에서 `font-size: 1rem` 기준 및 4px 스케일 간격 적용 확인.
+
+### 추가 작업 요약 (milkit-io 모듈 추가)
+- `milkit/milkit-io.psm1`를 신규 추가하고 `New-Store` 기반 객체형 FILE I/O 모듈을 구현함.
+- 텍스트 API를 추가함: `$store.ReadText(fileName)`, `$store.WriteText(fileName,text)`, `$store.EditText(fileName, transform)`.
+- 읽기는 UTF-8 BOM/BOMless 자동 호환으로 처리하고, 쓰기는 기본 UTF-8 BOMless(`-WriteBom $false`)로 고정함.
+- CSV를 테이블처럼 다루는 체이닝 DSL을 추가함: `$store.From(table).Select(...).Where(@{...}).Find()/Insert()/Update()/Delete()`.
+- `Where`는 정확히 일치 + AND만 지원하고, `Update/Delete`는 매칭된 전체 행을 대상으로 처리함.
+- `Insert`는 파일 미존재 시 `<table>.csv`를 자동 생성하고, 기존 헤더 기준 저장(없는 컬럼 빈값/추가 키 무시) 규칙을 적용함.
+- `milkit/SPEC.md`에 `milkit-http`/`milkit-io` 분리 개념과 `milkit-io` Public API를 추가함.
+- `milkit/smoke-test-io.ps1`를 추가해 UTF-8/BOM, EditText, CSV Find/Insert/Update/Delete 동작을 검증함.
+
+### 추가 검증 메모
+- `pwsh -NoLogo -NoProfile -Command "[void][scriptblock]::Create((Get-Content -LiteralPath '/workspaces/mil/milkit/milkit-io.psm1' -Raw)); 'PARSE_OK'"` -> `PARSE_OK`.
+- `pwsh -NoLogo -NoProfile -File /workspaces/mil/milkit/smoke-test-io.ps1` -> `OK`.
+- 회귀 점검: `pwsh -NoLogo -NoProfile -File /workspaces/mil/milkit/smoke-test.ps1` -> `OK`.
+
+### 추가 작업 요약 (cave style.css 토큰/스케일 정리)
+- `cave/style.css`에 `:root` 색상 토큰을 추가하고 기존 컬러 리터럴 사용을 전부 `var(--color-...)` 참조로 치환함.
+- 폰트 크기를 `rem` 단위로 통일함(`body`, `h1`, `h2`, `.status-row p`, `#phase`, `.log div`, 모바일 `h1`).
+- 4px 스케일 기준에 맞게 크기 값을 정리함(예: `gap 6/14 -> 8/16`, `min-width 138 -> 140`, `log 538 -> 540`, 보드 턴 강조 `6 -> 8`).
+- `winner-notice`의 폰트 범위를 `clamp(2rem, 7vw, 3.5rem)`로 조정해 16px 기반 폰트 스케일을 유지함.
+
+### 추가 검증 메모
+- `awk` 기반 점검으로 `cave/style.css` 내 `px` 값 중 4의 배수가 아닌 항목이 없음을 확인함.
+- `awk` 점검으로 `:root` 블록 외부에 `#hex`/`rgb`/`rgba`/`hsl` 컬러 리터럴이 없음을 확인함.
+- `rg -n "font-size:\\s*[^;]*px" cave/style.css` 결과 없음으로 폰트 px 단위 제거를 확인함.
+- 후속 보정: CSV `Update`에서 `[ordered]` 입력 키 매칭을 안정화했고, `.`/`..` 파일명 입력은 거부하도록 보강함.
+- 사용 예시 추가: `milkit/example-io-crud.ps1`를 추가해 `id`, `access_type`, `time` 컬럼 CSV에 대해 Create/Read/Update/Delete 흐름을 한 파일에서 실행 가능하도록 제공함.
+- 예시는 `$store.From('access_records')` 기준으로 Insert 2건 -> Where+Select Find -> Where Update -> Where Delete -> 최종 조회 순서로 동작함.
+- 검증: `pwsh -NoLogo -NoProfile -File /workspaces/mil/milkit/example-io-crud.ps1` 실행 시 `UPDATED_COUNT=1`, `DELETED_COUNT=1` 및 최종 1행 유지 출력 확인.
+
+### 추가 작업 요약 (cave 밝은 톤 보정)
+- 사용자 피드백(전체 톤이 어두움)에 따라 `cave/style.css`의 `:root` 컬러 토큰 값을 밝은 팔레트로 재조정함.
+- 페이지/보드/버튼/경계/오버레이 색상을 고명도 기준으로 조정하고, 기존 토큰 참조 구조는 유지함.
+- 구조/레이아웃/폰트 rem/4px 스케일 규칙은 변경 없이 유지함.
+
+### 추가 검증 메모
+- `:root` 외부 컬러 리터럴 미사용 상태 유지 확인.
+- `px` 값 4배수 규칙 유지 확인.

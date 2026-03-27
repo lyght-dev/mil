@@ -1,6 +1,11 @@
 좋습니다. 아래는 지금까지 합의한 방향을 기준으로 정리한 **milkit SPEC 초안**입니다.
 범위는 요청하신 대로 **개요**와 **Public API** 중심입니다.
 
+현재 저장소에서 `milkit`은 두 모듈 개념으로 운영한다.
+
+* `milkit.psm1` : HTTP 서버 프레임워크 (`milkit-http` 개념)
+* `milkit-io.psm1` : UTF-8 파일 I/O + CSV 테이블 처리 (`milkit-io`)
+
 ---
 
 # milkit SPEC
@@ -720,3 +725,57 @@ Add-Route $app POST '/echo' {
 * static은 앱 루트 기준 상대경로로 등록
 * 핸들러는 인라인 또는 함수 연결 모두 지원
 * JSON 응답, 상태 코드 처리, 공통 예외 처리를 프레임워크가 담당
+
+---
+
+## 6. `milkit-io` Public API
+
+### 6.1 목적
+
+`milkit-io`는 UTF-8(BOM/BOMless) 텍스트 파일 처리와 CSV 기반 `SELECT/WHERE` 스타일 조회/수정을 제공한다.
+
+### 6.2 엔트리 API
+
+```powershell
+New-Store
+    [-Root <string>]
+    [-WriteBom <bool>]
+```
+
+규약:
+
+* `-Root`는 저장소 루트다.
+* `-WriteBom` 기본값은 `$false`이며, 쓰기 시 UTF-8 BOMless를 사용한다.
+* 읽기는 BOM/BOMless를 모두 자동으로 읽는다.
+
+### 6.3 Store 메서드
+
+```powershell
+$store.ReadText(<fileName>)
+$store.WriteText(<fileName>, <text>)
+$store.EditText(<fileName>, <scriptblock>)
+$store.From(<tableName>)
+```
+
+규약:
+
+* `fileName`은 경로 구분자 없는 파일명만 허용한다.
+* `tableName`은 경로 구분자 없는 이름만 허용하며 실제 파일은 `<Root>/<tableName>.csv`로 매핑한다.
+
+### 6.4 CSV Query DSL
+
+```powershell
+$store.From('access_log').Where(@{ type = 'entry' }).Select(@('id', 'location')).Find()
+$store.From('access_log').Insert(@{ ... })
+$store.From('access_log').Where(@{ ... }).Update(@{ ... })
+$store.From('access_log').Where(@{ ... }).Delete()
+```
+
+규약:
+
+* `Where`는 **정확히 일치(`=`)** 와 **AND 결합**만 지원한다.
+* `Find()`는 row 배열 반환.
+* `Insert/Update/Delete`는 영향 건수(`int`) 반환.
+* `Insert` 시 파일이 없으면 CSV를 자동 생성한다.
+* `Insert`는 기존 헤더 기준으로만 저장하고 없는 컬럼은 빈값, 추가 키는 무시한다.
+* `Update/Delete`는 매칭된 **전체 행**에 적용한다.
