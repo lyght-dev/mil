@@ -9,6 +9,7 @@ This directory contains a minimal online socket test game.
 - Client: static HTML/CSS/JavaScript only
 - Transport: WebSocket (`/ws`)
 - Game rules authority: frontend only
+- Local self-play page: `/self.html`
 
 ## 2. Scope
 
@@ -19,6 +20,7 @@ Included:
 - Role assignment for first two players (`black`, `white`)
 - Spectator join support
 - Ready handshake required before first start and each restart
+- Local self-play mode on single screen (`/self.html`)
 
 Excluded:
 
@@ -34,6 +36,8 @@ HTTP routes:
 - `GET /` -> `index.html`
 - `GET /index.html`
 - `GET /script.js`
+- `GET /self.html`
+- `GET /self.js`
 - `GET /style.css`
 - `GET /ws` (WebSocket upgrade endpoint)
 
@@ -109,6 +113,13 @@ Rules:
 - Five in a row wins (horizontal, vertical, diagonal)
 - Free rule only (no forbidden move checks)
 - Spectator cannot place stones or set ready
+
+Self-play mode (`/self.html`):
+
+- Uses same 15x15 free-rule board and winner check logic
+- No WebSocket gameplay sync is used
+- Black/white stones are placed alternately on one screen
+- Next round starts by button click (`다음 판 시작`)
 
 ## 6. UI Rules (Frontend)
 

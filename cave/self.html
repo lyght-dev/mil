@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Cave Self Mode</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main class="app">
+    <header id="topBar" class="top role-neutral">
+        <h1>Socket Test (Self)</h1>
+        <div class="status-row">
+            <p id="connection">연결 상태: 연결 안 됨</p>
+            <p id="readyState">준비 상태: 흑 X | 백 X</p>
+            <p id="role">내 돌 색: -</p>
+        </div>
+        <button id="readyBtn" type="button">다음 판 시작</button>
+    </header>
+
+    <section class="main-grid">
+        <aside class="log-aside">
+            <h2>로그</h2>
+            <div id="log" class="log"></div>
+        </aside>
+
+        <section class="board-area">
+            <p id="phase">진행 상태: 대기</p>
+            <div class="board-wrap">
+                <canvas id="board"></canvas>
+                <div id="winnerNotice" class="winner-notice" hidden></div>
+            </div>
+        </section>
+    </section>
+</main>
+
+<script src="/script.js"></script>
+<script src="/self.js"></script>
+</body>
+</html>

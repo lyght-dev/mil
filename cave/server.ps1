@@ -333,6 +333,16 @@ try {
             continue
         }
 
+        if ($method -eq "GET" -and $path -eq "/self.html") {
+            Send-FileResponse -Response $response -FileName "self.html" -ContentType "text/html; charset=utf-8"
+            continue
+        }
+
+        if ($method -eq "GET" -and $path -eq "/self.js") {
+            Send-FileResponse -Response $response -FileName "self.js" -ContentType "application/javascript; charset=utf-8"
+            continue
+        }
+
         if ($method -eq "GET" -and $path -eq "/style.css") {
             Send-FileResponse -Response $response -FileName "style.css" -ContentType "text/css; charset=utf-8"
             continue

@@ -1,5 +1,20 @@
 # HANDOFF
 
+## 2026-03-27
+
+### 추가 작업 요약 (cave self 모드 추가)
+- `cave/self.html`을 신규 추가해 기존 레이아웃(상단 상태/로그/보드)을 재사용하는 자기대국 페이지를 구성함.
+- `cave/self.html`에서 `script.js`를 먼저 로드하고 `self.js`를 후속 로드하도록 구성해 기존 전역 게임 함수를 재사용하도록 연결함.
+- `cave/self.js`를 신규 추가해 `/self.html`에서 WebSocket 연결을 종료/비활성화하고 로컬 단독 자기대국 모드로 초기화하도록 구현함.
+- `cave/self.js`에서 한 화면 흑/백 순차 착수(턴 교대), 승리 판정/오버레이 표시, 버튼 기반 수동 재시작(`다음 판 시작`)을 구현함.
+- `cave/server.ps1`에 `GET /self.html`, `GET /self.js` 정적 라우트를 추가함.
+- `cave/SPEC.md`에 self 모드 계약(신규 정적 라우트, 로컬 자기대국 동작, 수동 재시작)을 반영함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/cave/self.js` 통과.
+- `node --check /workspaces/mil/cave/script.js` 통과.
+- `pwsh -NoLogo -NoProfile -Command "[void][scriptblock]::Create((Get-Content -LiteralPath '/workspaces/mil/cave/server.ps1' -Raw)); 'PARSE_OK'"` -> `PARSE_OK`.
+
 ## 2026-03-26
 
 ### 추가 작업 요약 (cave 게임 종료 대형 알림)
@@ -512,3 +527,45 @@
 ### 추가 검증 메모
 - `:root` 외부 컬러 리터럴 미사용 상태 유지 확인.
 - `px` 값 4배수 규칙 유지 확인.
+
+### 추가 작업 요약 (radiolog Gray 중심 가독성 리디자인)
+- 사용자 피드백에 맞춰 `radiolog/style.css`를 전면 재정리해 Sky 계열 대면적 배경 사용을 제거함.
+- 본문 계층(배경/표헤더/행라벨/입력셀)은 Gray 계열로 통일하고, `primary`는 버튼·포커스·섹션 헤딩·완료 상태 포인트에만 제한 적용함.
+- 셀 상태 표현을 배경 채움 위주에서 얇은 보더/인셋 강조 위주로 변경해 장시간 읽기 가독성을 개선함.
+- `radiolog/index.html`의 문서 타이틀/헤더 문구를 `무선운용일지` 목적에 맞게 정리함.
+- `radiolog/SPEC.md` UI 규칙에서 색상 정책을 `Skyblue + Slate`에서 `Gray 본문 + Primary 포인트`로 갱신함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/radiolog/script.js` 통과.
+- `rg -n "sky|Sky" /workspaces/mil/radiolog/style.css /workspaces/mil/radiolog/SPEC.md` 결과 없음 확인.
+- `style.css`에서 `@media` 미사용 상태 유지 확인.
+
+### 추가 작업 요약 (radiolog Gray-only 재조정)
+- 사용자 추가 요청에 따라 `radiolog/style.css`를 재수정해 색채 계열 포인트를 전부 제거하고, 팔레트를 Gray 계열만 사용하도록 고정함.
+- 기존 `primary` 기반 강조를 없애고 `accent`를 포함한 모든 강조를 명도 차이(진회색/연회색)로만 표현하도록 변경함.
+- 배경 밝기를 한 단계 낮춰 전체 화면이 과하게 밝아 보이던 문제를 완화함.
+- `radiolog/SPEC.md` UI 규칙을 Gray-only 정책(강조도 명도 차이로 표현)으로 갱신함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/radiolog/script.js` 통과.
+- `rg -n "primary|sky|Sky|blue|Blue" /workspaces/mil/radiolog/style.css /workspaces/mil/radiolog/SPEC.md` 결과 없음 확인.
+
+### 추가 작업 요약 (radiolog 배경 중성값 고정)
+- 사용자 피드백(배경 `#ebebeb`가 색 번짐처럼 보임)에 따라 `radiolog/style.css`의 `body` 배경을 `#f5f5f5`로 교체함.
+- 나머지 팔레트는 기존 Gray-only 정책을 유지하고, 강조는 명도 차이만 사용하는 규칙을 그대로 유지함.
+- `radiolog/SPEC.md`에 페이지 배경 고정값(`#f5f5f5`)을 명시해 다음 세션에서 재발하지 않도록 정리함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/radiolog/script.js` 통과.
+- `rg -n "background:\s*#ebebeb" /workspaces/mil/radiolog/style.css` 결과 없음 확인.
+- `rg -n "background:\s*#f5f5f5" /workspaces/mil/radiolog/style.css` 확인.
+
+### 추가 작업 요약 (radiolog 셀 내부 카드형 박스 제거)
+- 사용자 요청에 따라 매트릭스 셀 내부의 카드형 박스 표현을 제거함.
+- `radiolog/style.css`에서 `.cell-editor`의 보더/라운드/배경/인셋 효과를 제거해 입력 필드가 셀에 직접 배치된 평면형 구조로 변경함.
+- `pending`/`complete` 상태의 카드형 강조도 제거해 셀 내부 중첩 패널이 보이지 않도록 정리함.
+- `radiolog/SPEC.md` UI 규칙에 "매트릭스 셀 내부 카드형 래퍼 미사용" 규칙을 추가함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/radiolog/script.js` 통과.
+- `rg -n "\.cell-editor|카드형 래퍼" /workspaces/mil/radiolog/style.css /workspaces/mil/radiolog/SPEC.md`로 반영 확인.
