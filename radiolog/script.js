@@ -162,12 +162,19 @@ function normalizeRows(dateString, storedRows) {
       return row;
     }
 
+    const normalizedCounterpartyName =
+      typeof stored.counterpartyName === "string" && stored.counterpartyName
+        ? stored.counterpartyName
+        : row.linkType === PRE_LINK_TYPE && typeof stored.preReporter === "string"
+          ? stored.preReporter
+          : "";
+
     return {
       ...row,
       txSignal: normalizeOptionValue(stored.txSignal, SIGNAL_OPTIONS),
       rxSignal: normalizeOptionValue(stored.rxSignal, SIGNAL_OPTIONS),
       counterpartyRank: normalizeOptionValue(stored.counterpartyRank, RANK_OPTIONS),
-      counterpartyName: typeof stored.counterpartyName === "string" ? stored.counterpartyName : "",
+      counterpartyName: normalizedCounterpartyName,
       preReceiveStatus: normalizeOptionValue(stored.preReceiveStatus, PRE_RECEIVE_STATUS_OPTIONS),
       preReporter: typeof stored.preReporter === "string" ? stored.preReporter : "",
       recordedTime: typeof stored.recordedTime === "string" ? stored.recordedTime : "",
@@ -250,7 +257,7 @@ function isRowComplete(row) {
     }
 
     if (row.preReceiveStatus === "성공") {
-      return Boolean(row.preReporter && row.preReporter.trim());
+      return Boolean(row.counterpartyRank && row.counterpartyName && row.counterpartyName.trim());
     }
 
     return true;
@@ -294,6 +301,13 @@ function renderSelectOptions(options, selectedValue) {
     .join("");
 }
 
+function renderGuideCell(labels) {
+  const items = labels
+    .map((label) => `<div class="guide-item">${escapeHtml(label)}</div>`)
+    .join("");
+  return `<td class="guide-label"><div class="guide-stack">${items}</div></td>`;
+}
+
 function getRowKey(linkType, network, slotLabel, targetUnit) {
   return `${linkType}|${network}|${slotLabel}|${targetUnit}`;
 }
@@ -320,17 +334,39 @@ function renderPreCell(row) {
 
   return `<td class="matrix-cell">
     <div class="cell-editor ${stateClass}" data-row-cell="${escapeHtml(row.id)}">
-      <div class="editor-grid pre-grid">
-        <label class="editor-field">
-          <span>수신상태</span>
-          <select data-id="${escapeHtml(row.id)}" data-field="preReceiveStatus">
+      <div class="editor-grid">
+        <div class="editor-row">
+          <div class="editor-controls">
+            <select
+              class="editor-control"
+              aria-label="수신 상태"
+              data-id="${escapeHtml(row.id)}"
+              data-field="preReceiveStatus"
+            >
             ${renderSelectOptions(PRE_RECEIVE_STATUS_OPTIONS, row.preReceiveStatus)}
-          </select>
-        </label>
-        <label class="editor-field">
-          <span>상대 보고자</span>
-          <input data-id="${escapeHtml(row.id)}" data-field="preReporter" type="text" value="${escapeHtml(row.preReporter)}" />
-        </label>
+            </select>
+          </div>
+        </div>
+        <div class="editor-row">
+          <div class="editor-controls two-col">
+            <select
+              class="editor-control"
+              aria-label="보고자 계급"
+              data-id="${escapeHtml(row.id)}"
+              data-field="counterpartyRank"
+            >
+              ${renderSelectOptions(RANK_OPTIONS, row.counterpartyRank)}
+            </select>
+            <input
+              class="editor-control"
+              aria-label="보고자 성명"
+              data-id="${escapeHtml(row.id)}"
+              data-field="counterpartyName"
+              type="text"
+              value="${escapeHtml(row.counterpartyName)}"
+            />
+          </div>
+        </div>
       </div>
     </div>
   </td>`;
@@ -348,38 +384,64 @@ function renderEditorCell(row) {
   const complete = isRowComplete(row);
   const stateClass = complete ? "complete" : "pending";
   const divisionTimeField = isDivisionRow(row)
-    ? `<label class="editor-field time-field">
-          <span>실제시간</span>
-          <input data-id="${escapeHtml(row.id)}" data-field="recordedTime" type="time" value="${escapeHtml(row.recordedTime)}" />
-        </label>`
+    ? `<div class="editor-row">
+          <div class="editor-controls">
+            <input
+              class="editor-control"
+              aria-label="교신시각"
+              data-id="${escapeHtml(row.id)}"
+              data-field="recordedTime"
+              type="time"
+              value="${escapeHtml(row.recordedTime)}"
+            />
+          </div>
+        </div>`
     : "";
 
   return `<td class="matrix-cell">
     <div class="cell-editor ${stateClass}" data-row-cell="${escapeHtml(row.id)}">
       <div class="editor-grid">
-        <label class="editor-field">
-          <span>송신</span>
-          <select data-id="${escapeHtml(row.id)}" data-field="txSignal">
-            ${renderSelectOptions(SIGNAL_OPTIONS, row.txSignal)}
-          </select>
-        </label>
-        <label class="editor-field">
-          <span>수신</span>
-          <select data-id="${escapeHtml(row.id)}" data-field="rxSignal">
-            ${renderSelectOptions(SIGNAL_OPTIONS, row.rxSignal)}
-          </select>
-        </label>
-        <label class="editor-field">
-          <span>관등</span>
-          <select data-id="${escapeHtml(row.id)}" data-field="counterpartyRank">
-            ${renderSelectOptions(RANK_OPTIONS, row.counterpartyRank)}
-          </select>
-        </label>
-        <label class="editor-field">
-          <span>성명</span>
-          <input data-id="${escapeHtml(row.id)}" data-field="counterpartyName" type="text" value="${escapeHtml(row.counterpartyName)}" />
-        </label>
         ${divisionTimeField}
+        <div class="editor-row">
+          <div class="editor-controls two-col">
+            <select
+              class="editor-control"
+              aria-label="송신 감명도"
+              data-id="${escapeHtml(row.id)}"
+              data-field="txSignal"
+            >
+              ${renderSelectOptions(SIGNAL_OPTIONS, row.txSignal)}
+            </select>
+            <select
+              class="editor-control"
+              aria-label="수신 감명도"
+              data-id="${escapeHtml(row.id)}"
+              data-field="rxSignal"
+            >
+              ${renderSelectOptions(SIGNAL_OPTIONS, row.rxSignal)}
+            </select>
+          </div>
+        </div>
+        <div class="editor-row">
+          <div class="editor-controls two-col">
+            <select
+              class="editor-control"
+              aria-label="상대 교신자 계급"
+              data-id="${escapeHtml(row.id)}"
+              data-field="counterpartyRank"
+            >
+              ${renderSelectOptions(RANK_OPTIONS, row.counterpartyRank)}
+            </select>
+            <input
+              class="editor-control"
+              aria-label="상대 교신자 성명"
+              data-id="${escapeHtml(row.id)}"
+              data-field="counterpartyName"
+              type="text"
+              value="${escapeHtml(row.counterpartyName)}"
+            />
+          </div>
+        </div>
       </div>
     </div>
   </td>`;
@@ -388,11 +450,13 @@ function renderEditorCell(row) {
 function renderDivisionRows(lookup) {
   elements.divisionBody.innerHTML = DIVISION_SLOTS
     .map((slotLabel) => {
+      const guideCell = renderGuideCell(["교신시각", "송수신 감명도", "교신자"]);
       const cells = DIVISION_NETWORKS
         .map((network) => renderEditorCell(findRow(lookup, "사단망", network, slotLabel, "1DIV")))
         .join("");
       return `<tr>
         <th class="row-label" scope="row">${escapeHtml(slotLabel)}</th>
+        ${guideCell}
         ${cells}
       </tr>`;
     })
@@ -405,6 +469,7 @@ function renderDivisionPreRows(lookup) {
       const row = findRow(lookup, PRE_LINK_TYPE, DIVISION_PRE_NETWORK, slotLabel, "1DIV");
       return `<tr>
         <th class="row-label" scope="row">${escapeHtml(slotLabel)}</th>
+        ${renderGuideCell(["수신상태", "보고자"])}
         ${renderPreCell(row)}
       </tr>`;
     })
@@ -440,6 +505,7 @@ function renderBrigadeSlotLabel(lookup, network, slot) {
 }
 
 function renderBrigadeRows(lookup, network, slots, bodyElement) {
+  const guideCell = renderGuideCell(["송수신 감명도", "교신자"]);
   bodyElement.innerHTML = slots
     .map((slot) => {
       const cells = BRIGADE_UNITS
@@ -447,6 +513,7 @@ function renderBrigadeRows(lookup, network, slots, bodyElement) {
         .join("");
       return `<tr>
         <th class="row-label" scope="row">${renderBrigadeSlotLabel(lookup, network, slot)}</th>
+        ${guideCell}
         ${cells}
       </tr>`;
     })
@@ -454,6 +521,7 @@ function renderBrigadeRows(lookup, network, slots, bodyElement) {
 }
 
 function renderBrigadePreRows(lookup) {
+  const guideCell = renderGuideCell(["수신상태", "보고자"]);
   elements.brigadePreBody.innerHTML = PRE_SLOTS
     .map((slotLabel) => {
       const cells = BRIGADE_UNITS
@@ -461,6 +529,7 @@ function renderBrigadePreRows(lookup) {
         .join("");
       return `<tr>
         <th class="row-label" scope="row">${escapeHtml(slotLabel)}</th>
+        ${guideCell}
         ${cells}
       </tr>`;
     })

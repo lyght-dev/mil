@@ -94,7 +94,6 @@ body {
 
 .field > span,
 .author-field > span,
-.editor-field > span,
 .slot-time-field > span {
   color: var(--text-muted);
   font-size: 0.75rem;
@@ -104,9 +103,7 @@ body {
 
 input[type="date"],
 .author-field input[type="text"],
-.editor-field select,
-.editor-field input[type="text"],
-.editor-field input[type="time"],
+.editor-control,
 .slot-time-field input[type="time"] {
   width: 100%;
   border: 1px solid var(--line-strong);
@@ -122,20 +119,16 @@ input[type="date"],
   padding: 0 10px;
 }
 
-.editor-field select,
-.editor-field input[type="text"],
-.editor-field input[type="time"],
+.editor-control,
 .slot-time-field input[type="time"] {
-  height: 26px;
+  height: 28px;
   padding: 0 6px;
   font-size: 0.78rem;
 }
 
 input[type="date"]:focus,
 .author-field input[type="text"]:focus,
-.editor-field select:focus,
-.editor-field input[type="text"]:focus,
-.editor-field input[type="time"]:focus,
+.editor-control:focus,
 .slot-time-field input[type="time"]:focus {
   outline: none;
   border-color: var(--accent);
@@ -284,14 +277,53 @@ button:hover {
   max-width: 108px;
 }
 
+.guide-col-head {
+  width: 104px;
+  min-width: 104px;
+  max-width: 104px;
+}
+
+.guide-label {
+  width: 104px;
+  min-width: 104px;
+  max-width: 104px;
+  padding: 0;
+  vertical-align: top;
+  background: #f8f8f8;
+}
+
+.guide-stack {
+  display: grid;
+  height: 100%;
+  min-height: 100%;
+  grid-auto-rows: minmax(32px, 1fr);
+}
+
+.guide-item {
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  padding: 2px 6px;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.guide-item + .guide-item {
+  border-top: 1px solid #ececec;
+}
+
 .matrix-cell {
-  padding: 6px 5px;
+  padding: 0 5px;
   vertical-align: top;
   background: var(--surface);
 }
 
 .cell-editor {
   width: 100%;
+  height: 100%;
   padding: 0;
   border: none;
   border-radius: 0;
@@ -321,21 +353,31 @@ button:hover {
 
 .editor-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px;
+  height: 100%;
+  min-height: 100%;
+  gap: 0;
+  grid-auto-rows: minmax(32px, 1fr);
 }
 
-.pre-grid {
-  grid-template-columns: 1fr 1fr;
+.editor-row {
+  min-height: 32px;
+  padding: 0;
+  display: flex;
+  align-items: center;
 }
 
-.editor-field {
+.editor-row + .editor-row {
+  border-top: 1px solid #ececec;
+}
+
+.editor-controls {
   display: grid;
   gap: 4px;
+  width: 100%;
 }
 
-.editor-field.time-field {
-  grid-column: 1 / -1;
+.editor-controls.two-col {
+  grid-template-columns: 1fr 1fr;
 }
 
 .slot-time-field {

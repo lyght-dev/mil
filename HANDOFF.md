@@ -662,3 +662,80 @@
 - `nl -ba /workspaces/mil/radiolog/index.html | sed -n '40,112p'`로 헤딩 계층 반영 확인.
 - `nl -ba /workspaces/mil/radiolog/style.css | sed -n '218,238p'`로 `.network-major` 스타일 반영 확인.
 - `nl -ba /workspaces/mil/radiolog/SPEC.md | sed -n '86,100p'`로 문서 규칙 반영 확인.
+
+### 추가 작업 요약 (radiolog Edit 좌측 메타 컬럼 UX 개선)
+- 사용자 요청에 따라 Edit 셀 라벨 표기를 `좌측 메타 컬럼 + 우측 입력 영역` 구조로 재편함.
+- 적용 범위를 일반 교신 + PRE 전체 셀로 통일함.
+- `radiolog/script.js` 렌더링을 갱신함.
+- 일반 교신 셀은 `신호`(송신/수신), `교신자`(계급/성명) 메타 행으로 구성함.
+- 사단망 일반 교신 셀은 상단 `시간` 메타 행(`실제시간`)을 유지함.
+- PRE 셀은 `수신`(수신 상태), `보고`(상대 보고자) 메타 행으로 구성함.
+- 기존 `data-id`/`data-field` 기반 입력 이벤트, 완료 판정, localStorage 스키마는 변경하지 않음.
+- 반복 텍스트 라벨을 셀 내부에 중복 노출하지 않도록 정리하고, 입력 식별을 위해 각 컨트롤에 `aria-label`을 추가함.
+- `radiolog/style.css`를 메타 컬럼 구조 기준으로 조정함.
+- 기존 2x2 `editor-grid`를 행 단위 `editor-row` 레이아웃으로 전환하고, 메타 컬럼 폭(56px) + 입력영역 유동폭 구조를 적용함.
+- `editor-controls.two-col`을 통해 일반 교신 2열 입력(송신/수신, 계급/성명)을 유지함.
+- Gray-only 톤을 유지하면서 행 구분선/간격을 조정해 균형형 밀도의 가독성을 개선함.
+- `radiolog/SPEC.md` UI 규칙에 좌측 메타 컬럼 구조 및 메타 라벨(`신호/교신자/시간`, `수신/보고`) 기준을 반영함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/radiolog/script.js` 통과.
+- `rg -n "editor-field|pre-grid|time-field" /workspaces/mil/radiolog/style.css /workspaces/mil/radiolog/script.js /workspaces/mil/radiolog/SPEC.md`로 구 레이아웃 클래스 제거 확인.
+- `rg -n "좌측 메타 컬럼|신호|교신자|PRE 메타" /workspaces/mil/radiolog/SPEC.md`로 문서 반영 확인.
+
+### 추가 작업 요약 (radiolog 메타 라벨 명칭 변경 + PRE 보고자 필드 전환)
+- 사용자 요청에 따라 셀 메타 라벨을 변경함.
+- 일반 교신: `신호` -> `송수신 감명도`, `시간` -> `교신시각`.
+- PRE: `수신` -> `수신상태`, `보고` -> `보고자`.
+- PRE `보고자` 입력을 단일 텍스트(`preReporter`)에서 공통 `계급(select)+성명(input)` 필드(`counterpartyRank`, `counterpartyName`)로 전환함.
+- PRE 완료 판정을 변경함.
+- `수신상태`는 필수.
+- `수신상태=성공`이면 `보고자 계급+성명` 모두 필수.
+- `수신상태=실패`이면 보고자 입력은 선택.
+- 기존 저장 호환을 위해 `preReporter` 필드는 데이터 모델에 유지하고, 구데이터 로드시 PRE에서 `counterpartyName`이 비어 있으면 `preReporter` 값을 이름으로 이관해 표시하도록 처리함.
+- `radiolog/style.css`에서 메타 컬럼 폭을 92px로 확장하고 `white-space: nowrap`을 적용해 긴 라벨이 줄바꿈되지 않도록 조정함.
+- `radiolog/SPEC.md`를 갱신해 PRE 입력/완료 판정/메타 라벨 기준 및 저장 필드 설명을 최신 동작과 일치시킴.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/radiolog/script.js` 통과.
+- `rg -n "data-field=\"preReporter\"|editor-meta\">신호|editor-meta\">시간|editor-meta\">수신<|editor-meta\">보고<" /workspaces/mil/radiolog/script.js` 결과 없음 확인.
+- `rg -n "송수신 감명도|교신시각|수신상태|보고자 계급|보고자 성명|보고자" /workspaces/mil/radiolog/script.js /workspaces/mil/radiolog/SPEC.md`로 반영 확인.
+
+### 추가 작업 요약 (radiolog 행 단위 `구분` 컬럼 도입)
+- 사용자 요청에 따라 셀 내부 반복 안내를 제거하고, 각 행에서 한 번만 보이는 `구분` 컬럼(2번 컬럼)을 전 표에 추가함.
+- `radiolog/index.html`의 사단망/사단 PRE/여단 CF/F/PRE 모든 헤더에 `구분` 컬럼 헤더를 삽입함.
+- `radiolog/script.js`에 `renderGuideCell(labels)`를 추가하고, 각 행 렌더러(`renderDivisionRows`, `renderDivisionPreRows`, `renderBrigadeRows`, `renderBrigadePreRows`)에서 `구분` 셀을 함께 렌더링하도록 변경함.
+- `구분` 표시 텍스트는 세로 스택으로 고정함.
+- 사단망 일반: `교신시각 / 송수신 감명도 / 교신자`
+- 여단망 일반(CF/F): `송수신 감명도 / 교신자`
+- PRE: `수신상태 / 보고자`
+- `renderEditorCell`, `renderPreCell`에서 셀 내부 메타 텍스트(`editor-meta`)를 제거하고 입력 컨트롤만 남겨 안내 중복을 제거함.
+- 기존 입력 이벤트/저장 키/완료 판정 로직은 유지함.
+- `radiolog/style.css`에 `구분` 컬럼 스타일(`.guide-col-head`, `.guide-label`, `.guide-stack`, `.guide-item`)을 추가하고, 입력행 스타일을 메타 없는 구조로 정리함.
+- `radiolog/SPEC.md` UI 규칙을 `행당 1회 구분 컬럼` 기준으로 갱신하고, 셀 내부 메타 라벨 미사용 규칙을 명시함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/radiolog/script.js` 통과.
+- `rg -n "editor-meta|좌측 메타 컬럼|data-field=\"preReporter\"" /workspaces/mil/radiolog/script.js /workspaces/mil/radiolog/style.css /workspaces/mil/radiolog/SPEC.md` 결과 없음 확인.
+- `rg -n "guide-col-head|guide-label|guide-item|renderGuideCell|구분" /workspaces/mil/radiolog/index.html /workspaces/mil/radiolog/script.js /workspaces/mil/radiolog/style.css /workspaces/mil/radiolog/SPEC.md`로 반영 확인.
+
+### 추가 작업 요약 (radiolog `guide-label`/`matrix-cell` 하단 여백 보정)
+- 사용자 피드백(2칸 안내 아래 하단 공백)에 맞춰 `radiolog/style.css`의 `.matrix-cell` 세로 패딩을 제거함.
+- 변경: `padding: 6px 5px` -> `padding: 0 5px`.
+- 결과적으로 `guide-label`의 2칸/3칸 안내 높이와 입력 셀 높이가 맞춰져 하단 여백이 남지 않도록 조정함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/radiolog/script.js` 통과.
+- `rg -n "^\.matrix-cell|padding: 0 5px;|guide-label" /workspaces/mil/radiolog/style.css`로 스타일 반영 확인.
+
+### 추가 작업 요약 (radiolog guide/matrix 동시 균등 보간)
+- 사용자 요청에 따라 `guide-label`뿐 아니라 `matrix-cell` 내부 입력행도 동일 기준으로 균등 보간되도록 스타일을 동기화함.
+- `radiolog/style.css`에서 `guide-stack`에 `height:100%`, `min-height:100%`, `grid-auto-rows:minmax(32px, 1fr)`를 적용해 2칸/3칸 안내가 셀 높이를 균등 분할하도록 변경함.
+- `cell-editor`와 `editor-grid`에도 동일한 높이/행 보간 규칙(`height:100%`, `min-height:100%`, `grid-auto-rows:minmax(32px, 1fr)`)을 적용해 입력행도 동일 비율로 분할되도록 맞춤.
+- `editor-row`는 `min-height:32px`, `display:flex`, `align-items:center`로 정리해 각 입력행 정렬을 안정화함.
+- 기존 `matrix-cell` 세로 패딩 제거(`padding: 0 5px`) 상태를 유지해 하단 잔여 여백이 다시 생기지 않도록 고정함.
+- `radiolog/SPEC.md` UI 규칙에 `구분 스택/매트릭스 입력행 균등 분할 및 하단 여백 미표시` 기준을 명시함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/radiolog/script.js` 통과.
+- `rg -n "guide-stack|editor-grid|grid-auto-rows|minmax\(32px, 1fr\)|height: 100%|하단 여백 없이" /workspaces/mil/radiolog/style.css /workspaces/mil/radiolog/SPEC.md`로 반영 확인.
