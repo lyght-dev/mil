@@ -1,5 +1,30 @@
 # HANDOFF
 
+## 2026-03-29
+
+### 추가 작업 요약 (radiolog 미교신 셀 전환 UX 추가)
+- `radiolog/index.html`에 셀 우클릭용 컨텍스트 메뉴 DOM(`cell-context-menu`)을 추가하고, 액션 버튼(`cell-no-contact-action`)을 연결함.
+- `radiolog/script.js`에 일반 교신 셀 우클릭 핸들러(`contextmenu`)를 추가해 `미교신 설정`/`교신으로 전환` 토글 UX를 구현함.
+- 일반 교신 행 데이터 모델에 `isNoContact`, `noContactReason`, `noContactReasonDetail` 필드를 추가하고 저장/로드 정규화에 반영함.
+- 일반 교신 셀이 미교신 상태면 기존 교신 입력 대신 미교신 전용 셀(사유 선택 + `기타` 상세입력)을 렌더링하도록 분기함.
+- 미교신 사유 목록을 `중계소 이상`, `감명도 저조`, `중계소 키물림`, `무전실 폐쇄`, `기타`로 고정함.
+- 미교신 셀은 사유 입력 여부와 무관하게 완료 처리하지 않도록(`pending` 유지) 완료 판정을 조정함.
+- 미교신 셀에서도 기존 비고 버튼/팝오버를 그대로 유지함.
+- ESC/외부 클릭/스크롤/리사이즈/날짜 변경/리셋 시 컨텍스트 메뉴가 닫히도록 정리함.
+- `radiolog/style.css`에 미교신 블록 셀 스타일(`.cell-editor.blocked` 등)과 컨텍스트 메뉴 스타일을 추가함.
+- `radiolog/SPEC.md`에 미교신 입력 규칙, 완료 판정 규칙, 저장 필드, 우클릭 UI 규칙을 반영함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/radiolog/script.js` 통과.
+
+### 추가 작업 요약 (radiolog 미교신 셀 구조 정정)
+- 사용자 정정에 맞춰 미교신 셀 입력을 `미교신` 텍스트 + `사유 select` 2줄 구조로 단순화함.
+- `기타` 선택 시 미교신 셀 내부 상세 입력은 제거하고 기존 `비고` 팝오버를 사용하도록 정리함.
+- 데이터 모델/저장 스키마에서 `noContactReasonDetail` 사용을 제거하고 `noContactReason`만 유지함.
+- `radiolog/style.css`의 `.matrix-cell` 좌우 패딩을 제거해 블록 배경이 셀 좌우 끝까지 채워지도록 수정함.
+- 미교신 텍스트 스타일을 배지형이 아닌 flat 텍스트(`.blocked-text`)로 교체함.
+- `radiolog/SPEC.md`를 수정해 `기타 -> 비고 사용`, 미교신 2줄 구조, 저장 필드 변경을 반영함.
+
 ## 2026-03-27
 
 ### 추가 작업 요약 (cave self 모드 추가)

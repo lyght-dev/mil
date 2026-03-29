@@ -4,6 +4,8 @@ const STORAGE_AUTHOR_PREFIX = "radiolog:author:";
 const SIGNAL_OPTIONS = ["", "1/1", "2/2", "3/3"];
 const RANK_OPTIONS = ["", "이병", "일병", "상병", "병장"];
 const PRE_RECEIVE_STATUS_OPTIONS = ["", "성공", "실패"];
+const NO_CONTACT_REASON_OPTIONS = ["중계소 이상", "감명도 저조", "중계소 키물림", "무전실 폐쇄", "기타"];
+const NO_CONTACT_REASON_SELECT_OPTIONS = ["", ...NO_CONTACT_REASON_OPTIONS];
 
 const DIVISION_NETWORKS = ["작전망", "행정군수망"];
 const DIVISION_SLOTS = ["오전", "오후"];
@@ -40,14 +42,17 @@ const elements = {
   brigadePreBody: document.querySelector("#brigade-pre-body"),
   notePopover: document.querySelector("#note-popover"),
   noteTextarea: document.querySelector("#note-textarea"),
-  noteCloseButton: document.querySelector("#note-close-btn")
+  noteCloseButton: document.querySelector("#note-close-btn"),
+  cellContextMenu: document.querySelector("#cell-context-menu"),
+  cellNoContactAction: document.querySelector("#cell-no-contact-action")
 };
 
 const state = {
   currentDate: "",
   rows: [],
   activeNoteRowId: "",
-  activeNoteAnchor: null
+  activeNoteAnchor: null,
+  activeContextRowId: ""
 };
 
 function formatDate(date) {
@@ -134,6 +139,8 @@ function createTemplateRow(dateString, sequence, linkType, network, slotLabel, t
     preReporter: "",
     note: "",
     recordedTime: "",
+    isNoContact: false,
+    noContactReason: "",
     updatedAt: ""
   };
 }
@@ -174,6 +181,10 @@ function normalizeRows(dateString, storedRows) {
         : row.linkType === PRE_LINK_TYPE && typeof stored.preReporter === "string"
           ? stored.preReporter
           : "";
+    const normalizedNoContactReason = normalizeOptionValue(
+      typeof stored.noContactReason === "string" ? stored.noContactReason : "",
+      NO_CONTACT_REASON_SELECT_OPTIONS
+    );
 
     return {
       ...row,
@@ -185,6 +196,9 @@ function normalizeRows(dateString, storedRows) {
       preReporter: typeof stored.preReporter === "string" ? stored.preReporter : "",
       note: typeof stored.note === "string" ? stored.note : "",
       recordedTime: typeof stored.recordedTime === "string" ? stored.recordedTime : "",
+      isNoContact:
+        !isPreRow(row) && typeof stored.isNoContact === "boolean" ? stored.isNoContact : false,
+      noContactReason: normalizedNoContactReason,
       updatedAt: typeof stored.updatedAt === "string" ? stored.updatedAt : ""
     };
   });
@@ -241,6 +255,14 @@ function isPreRow(row) {
   return row.linkType === PRE_LINK_TYPE;
 }
 
+function isGeneralContactRow(row) {
+  return Boolean(row) && !isPreRow(row);
+}
+
+function isNoContactEnabled(row) {
+  return isGeneralContactRow(row) && row.isNoContact === true;
+}
+
 function isCfManualRow(row) {
   return (
     row.linkType === "여단망" &&
@@ -268,6 +290,10 @@ function isRowComplete(row) {
     }
 
     return true;
+  }
+
+  if (isNoContactEnabled(row)) {
+    return false;
   }
 
   const hasBaseFields = Boolean(
@@ -394,6 +420,33 @@ function renderPreCell(row) {
   </td>`;
 }
 
+function renderNoContactCell(row) {
+  return `<td class="matrix-cell">
+    <div class="cell-editor pending blocked" data-row-cell="${escapeHtml(row.id)}">
+      ${renderNoteTrigger(row)}
+      <div class="editor-grid">
+        <div class="editor-row">
+          <div class="editor-controls">
+            <div class="blocked-text">미교신</div>
+          </div>
+        </div>
+        <div class="editor-row">
+          <div class="editor-controls">
+            <select
+              class="editor-control"
+              aria-label="미교신 사유"
+              data-id="${escapeHtml(row.id)}"
+              data-field="noContactReason"
+            >
+              ${renderSelectOptions(NO_CONTACT_REASON_SELECT_OPTIONS, row.noContactReason)}
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+  </td>`;
+}
+
 function renderEditorCell(row) {
   if (row && isPreRow(row)) {
     return renderPreCell(row);
@@ -401,6 +454,10 @@ function renderEditorCell(row) {
 
   if (!row) {
     return '<td class="matrix-cell"><div class="cell-editor missing">-</div></td>';
+  }
+
+  if (isNoContactEnabled(row)) {
+    return renderNoContactCell(row);
   }
 
   const complete = isRowComplete(row);
@@ -572,6 +629,97 @@ function getRowById(rowId) {
   return state.rows.find((row) => row.id === rowId) || null;
 }
 
+function setContextActionLabel(row) {
+  if (!(elements.cellNoContactAction instanceof HTMLButtonElement)) {
+    return;
+  }
+  elements.cellNoContactAction.textContent = isNoContactEnabled(row) ? "교신으로 전환" : "미교신 설정";
+}
+
+function closeCellContextMenu() {
+  if (elements.cellContextMenu) {
+    elements.cellContextMenu.hidden = true;
+  }
+  state.activeContextRowId = "";
+}
+
+function positionCellContextMenu(clientX, clientY) {
+  if (!elements.cellContextMenu) {
+    return;
+  }
+
+  const menu = elements.cellContextMenu;
+  const margin = 8;
+  const rect = menu.getBoundingClientRect();
+  let left = clientX;
+  let top = clientY;
+
+  if (left + rect.width > window.innerWidth - margin) {
+    left = window.innerWidth - margin - rect.width;
+  }
+  if (top + rect.height > window.innerHeight - margin) {
+    top = window.innerHeight - margin - rect.height;
+  }
+  if (left < margin) {
+    left = margin;
+  }
+  if (top < margin) {
+    top = margin;
+  }
+
+  menu.style.left = `${Math.round(left)}px`;
+  menu.style.top = `${Math.round(top)}px`;
+}
+
+function openCellContextMenu(row, clientX, clientY) {
+  if (!elements.cellContextMenu || !isGeneralContactRow(row)) {
+    return;
+  }
+
+  state.activeContextRowId = row.id;
+  setContextActionLabel(row);
+  elements.cellContextMenu.hidden = false;
+  positionCellContextMenu(clientX, clientY);
+}
+
+function toggleNoContact(row) {
+  if (!isGeneralContactRow(row)) {
+    return;
+  }
+
+  if (isNoContactEnabled(row)) {
+    row.isNoContact = false;
+    row.noContactReason = "";
+  } else {
+    row.isNoContact = true;
+    if (!NO_CONTACT_REASON_SELECT_OPTIONS.includes(row.noContactReason)) {
+      row.noContactReason = "";
+    }
+  }
+
+  saveCurrentRows();
+  renderTables();
+}
+
+function findContextTargetRow(target) {
+  if (!(target instanceof Element)) {
+    return null;
+  }
+  const cell = target.closest("[data-row-cell]");
+  if (!cell || !(cell instanceof HTMLElement)) {
+    return null;
+  }
+  const rowId = cell.dataset.rowCell;
+  if (!rowId) {
+    return null;
+  }
+  const row = getRowById(rowId);
+  if (!isGeneralContactRow(row)) {
+    return null;
+  }
+  return row;
+}
+
 function findNoteTriggerButton(rowId) {
   const triggers = document.querySelectorAll("[data-note-trigger]");
   for (const trigger of triggers) {
@@ -696,6 +844,7 @@ function openNotePopover(rowId, trigger) {
 }
 
 function loadDate(dateString) {
+  closeCellContextMenu();
   closeNotePopover(true);
 
   const storedRows = readStoredRows(dateString);
@@ -733,6 +882,7 @@ function syncCellState(row) {
   }
 
   const complete = isRowComplete(row);
+  cell.classList.toggle("blocked", isNoContactEnabled(row));
   cell.classList.toggle("pending", !complete);
   cell.classList.toggle("complete", complete);
 }
@@ -750,6 +900,14 @@ function updateRowField(target) {
   }
 
   const value = typeof target.value === "string" ? target.value : "";
+
+  if (field === "noContactReason") {
+    row.noContactReason = normalizeOptionValue(value, NO_CONTACT_REASON_SELECT_OPTIONS);
+    saveCurrentRows();
+    syncCellState(row);
+    return;
+  }
+
   row[field] = value;
 
   saveCurrentRows();
@@ -808,12 +966,26 @@ function handleRowsClick(event) {
     return;
   }
 
+  closeCellContextMenu();
+
   const rowId = trigger.dataset.noteTrigger;
   if (!rowId) {
     return;
   }
 
   openNotePopover(rowId, trigger);
+}
+
+function handleRowsContextMenu(event) {
+  const row = findContextTargetRow(event.target);
+  if (!row) {
+    closeCellContextMenu();
+    return;
+  }
+
+  event.preventDefault();
+  closeNotePopover(true);
+  openCellContextMenu(row, event.clientX, event.clientY);
 }
 
 function handleRowsInput(event) {
@@ -834,13 +1006,18 @@ function handleRowsInput(event) {
 }
 
 function handleDocumentMouseDown(event) {
-  if (!state.activeNoteRowId) {
+  const target = event.target;
+  if (!(target instanceof Element)) {
+    closeCellContextMenu();
+    closeNotePopover(true);
     return;
   }
 
-  const target = event.target;
-  if (!(target instanceof Element)) {
-    closeNotePopover(true);
+  if (state.activeContextRowId && elements.cellContextMenu && !elements.cellContextMenu.contains(target)) {
+    closeCellContextMenu();
+  }
+
+  if (!state.activeNoteRowId) {
     return;
   }
 
@@ -856,10 +1033,16 @@ function handleDocumentMouseDown(event) {
 }
 
 function handleDocumentKeyDown(event) {
-  if (event.key !== "Escape" || !state.activeNoteRowId) {
+  if (event.key !== "Escape") {
     return;
   }
+
+  if (!state.activeNoteRowId && !state.activeContextRowId) {
+    return;
+  }
+
   event.preventDefault();
+  closeCellContextMenu();
   closeNotePopover(true);
 }
 
@@ -868,6 +1051,8 @@ function handleNoteCloseClick() {
 }
 
 function handleWindowViewportChange() {
+  closeCellContextMenu();
+
   if (!state.activeNoteRowId) {
     return;
   }
@@ -891,10 +1076,24 @@ function handleResetClick() {
     return;
   }
 
+  closeCellContextMenu();
   closeNotePopover(true);
   state.rows = buildTemplateRows(state.currentDate);
   saveCurrentRows();
   renderTables();
+}
+
+function handleCellContextActionClick() {
+  if (!state.activeContextRowId) {
+    return;
+  }
+  const row = getRowById(state.activeContextRowId);
+  if (!row) {
+    closeCellContextMenu();
+    return;
+  }
+  toggleNoContact(row);
+  closeCellContextMenu();
 }
 
 function initialize() {
@@ -904,9 +1103,11 @@ function initialize() {
   window.addEventListener("scroll", handleWindowViewportChange, true);
 
   elements.journalBlocks.addEventListener("click", handleRowsClick);
+  elements.journalBlocks.addEventListener("contextmenu", handleRowsContextMenu);
   elements.journalBlocks.addEventListener("input", handleRowsInput);
   elements.journalBlocks.addEventListener("change", handleRowsInput);
   elements.noteCloseButton.addEventListener("click", handleNoteCloseClick);
+  elements.cellNoContactAction.addEventListener("click", handleCellContextActionClick);
   elements.authorAm.addEventListener("input", handleAuthorInput);
   elements.authorPm.addEventListener("input", handleAuthorInput);
   elements.dateInput.addEventListener("change", handleDateChange);
