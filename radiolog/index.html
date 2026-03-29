@@ -8,55 +8,69 @@
 </head>
 <body>
   <main class="page">
-    <header class="report-header">
+    <header class="report-header" aria-label="메타 정보">
       <div class="title-block">
-        <p class="doc-label">무선운용일지 보고서</p>
         <h1>무선운용일지</h1>
-        <p class="doc-note">부대: 1DIV / 0FA / 1FA / 2FA / 3FA / 4FA</p>
       </div>
-      <div class="control-block">
-        <label class="field">
-          <span>기준일</span>
-          <input id="date-input" type="date" />
-        </label>
-        <div class="actions">
-          <button id="today-btn" type="button">오늘</button>
-          <button id="reset-btn" type="button">해당일 양식 재생성</button>
+      <div class="meta-controls">
+        <div class="control-row">
+          <label class="field">
+            <span>기준일</span>
+            <input id="date-input" type="date" />
+          </label>
+          <div class="actions">
+            <button id="today-btn" type="button">오늘</button>
+            <button id="reset-btn" type="button">해당일 양식 재생성</button>
+          </div>
         </div>
+        <section class="author-inline" aria-label="작성자 기록">
+          <p class="inline-label">작성자 기록</p>
+          <div class="author-fields">
+            <label class="author-field">
+              <span>오전</span>
+              <input id="author-am" type="text" />
+            </label>
+            <label class="author-field">
+              <span>오후</span>
+              <input id="author-pm" type="text" />
+            </label>
+          </div>
+        </section>
       </div>
     </header>
 
-    <section class="author-record" aria-label="작성자 기록">
-      <h2>작성자 기록</h2>
-      <div class="author-fields">
-        <label class="author-field">
-          <span>오전</span>
-          <input id="author-am" type="text" />
-        </label>
-        <label class="author-field">
-          <span>오후</span>
-          <input id="author-pm" type="text" />
-        </label>
-      </div>
-    </section>
-
     <section id="journal-blocks" class="blocks" aria-label="무선 일지 입력 블록">
-      <h1 class="matrix-major">사단망</h1>
-      <div class="table-shell">
-        <table class="matrix-table division-table" aria-label="사단망 입력표">
-          <thead>
-            <tr>
-              <th>망 \ 시간</th>
-              <th>오전</th>
-              <th>오후</th>
-            </tr>
-          </thead>
-          <tbody id="division-body"></tbody>
-        </table>
+      <h1 class="matrix-major">외부망</h1>
+      <h2 class="network-major">사단망</h2>
+      <div class="division-grid">
+        <div class="table-shell">
+          <table class="matrix-table division-table" aria-label="사단망 입력표">
+            <thead>
+              <tr>
+                <th>시간 \ 망</th>
+                <th>작전망</th>
+                <th>행정군수망</th>
+              </tr>
+            </thead>
+            <tbody id="division-body"></tbody>
+          </table>
+        </div>
+        <div class="table-shell">
+          <table class="matrix-table division-pre-table" aria-label="사단망 PRE 입력표">
+            <thead>
+              <tr>
+                <th>시간 \ PRE</th>
+                <th>PRE(행정군수망)</th>
+              </tr>
+            </thead>
+            <tbody id="division-pre-body"></tbody>
+          </table>
+        </div>
       </div>
 
-      <h1 class="matrix-major">여단망</h1>
-      <h2 class="matrix-minor">CF</h2>
+      <h1 class="matrix-major">내부망</h1>
+      <h2 class="network-major">여단망</h2>
+      <h3 class="matrix-minor">CF</h3>
       <div class="table-shell">
         <table class="matrix-table brigade-table" aria-label="여단망 CF 입력표">
           <thead>
@@ -73,7 +87,7 @@
         </table>
       </div>
 
-      <h2 class="matrix-minor">F</h2>
+      <h3 class="matrix-minor">F</h3>
       <div class="table-shell">
         <table class="matrix-table brigade-table" aria-label="여단망 F 입력표">
           <thead>
@@ -87,6 +101,23 @@
             </tr>
           </thead>
           <tbody id="brigade-f-body"></tbody>
+        </table>
+      </div>
+
+      <h3 class="matrix-minor">PRE(위치취합보고)</h3>
+      <div class="table-shell">
+        <table class="matrix-table brigade-table" aria-label="여단망 PRE 입력표">
+          <thead>
+            <tr>
+              <th>시간 \ 대대</th>
+              <th>0FA</th>
+              <th>1FA</th>
+              <th>2FA</th>
+              <th>3FA</th>
+              <th>4FA</th>
+            </tr>
+          </thead>
+          <tbody id="brigade-pre-body"></tbody>
         </table>
       </div>
     </section>

@@ -40,16 +40,12 @@ body {
 }
 
 .report-header {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-  padding: 18px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+  display: grid;
+  grid-template-columns: minmax(420px, 1fr) minmax(560px, 620px);
+  align-items: end;
+  gap: 18px;
+  padding: 0 0 14px;
+  border-bottom: 1px solid var(--line);
 }
 
 .doc-label {
@@ -71,13 +67,24 @@ body {
 }
 
 .doc-note {
-  margin: 8px 0 0;
+  margin: 6px 0 0;
   color: var(--text-muted);
   font-size: 0.93rem;
 }
 
-.control-block {
-  min-width: 300px;
+.meta-controls {
+  width: 100%;
+  max-width: 620px;
+  justify-self: end;
+  display: grid;
+  gap: 8px;
+}
+
+.control-row {
+  display: grid;
+  grid-template-columns: 170px 1fr;
+  align-items: end;
+  gap: 10px;
 }
 
 .field {
@@ -138,7 +145,7 @@ input[type="date"]:focus,
 .actions {
   display: flex;
   gap: 8px;
-  margin-top: 10px;
+  margin-top: 0;
 }
 
 button {
@@ -167,19 +174,17 @@ button:hover {
   background: var(--accent-strong);
 }
 
-.author-record {
-  margin-top: 12px;
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--surface);
+.author-inline {
+  display: grid;
+  gap: 6px;
 }
 
-.author-record h2 {
-  margin: 0 0 8px;
-  color: var(--text-strong);
-  font-size: 1rem;
-  font-weight: 700;
+.inline-label {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
 }
 
 .author-fields {
@@ -196,7 +201,13 @@ button:hover {
 .blocks {
   display: grid;
   gap: 10px;
-  margin-top: 12px;
+  margin-top: 14px;
+}
+
+.division-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 10px;
 }
 
 .matrix-major {
@@ -208,6 +219,14 @@ button:hover {
   font-weight: 800;
   line-height: 1.2;
   letter-spacing: -0.01em;
+}
+
+.network-major {
+  margin: 6px 0 4px;
+  color: var(--text-strong);
+  font-size: 1.18rem;
+  font-weight: 800;
+  line-height: 1.2;
 }
 
 .matrix-minor {
@@ -227,8 +246,8 @@ button:hover {
 
 .matrix-table {
   width: 100%;
-  table-layout: fixed;
   border-collapse: collapse;
+  height: 100%;
 }
 
 .matrix-table thead th {
@@ -248,7 +267,9 @@ button:hover {
 }
 
 .row-label {
-  width: 80px;
+  width: 108px;
+  min-width: 108px;
+  max-width: 108px;
   padding: 8px 4px;
   background: var(--surface-muted);
   color: var(--text);
@@ -257,8 +278,10 @@ button:hover {
   text-align: center;
 }
 
-.brigade-table .row-label {
+.matrix-table thead th:first-child {
   width: 108px;
+  min-width: 108px;
+  max-width: 108px;
 }
 
 .matrix-cell {
@@ -300,6 +323,10 @@ button:hover {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 4px;
+}
+
+.pre-grid {
+  grid-template-columns: 1fr 1fr;
 }
 
 .editor-field {

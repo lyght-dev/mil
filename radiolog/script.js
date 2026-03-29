@@ -3,9 +3,14 @@ const STORAGE_JOURNAL_PREFIX = "radiolog:journal:";
 const STORAGE_AUTHOR_PREFIX = "radiolog:author:";
 const SIGNAL_OPTIONS = ["", "1/1", "2/2", "3/3"];
 const RANK_OPTIONS = ["", "이병", "일병", "상병", "병장"];
+const PRE_RECEIVE_STATUS_OPTIONS = ["", "성공", "실패"];
 
 const DIVISION_NETWORKS = ["작전망", "행정군수망"];
 const DIVISION_SLOTS = ["오전", "오후"];
+const PRE_SLOTS = ["08:00", "10:00", "12:00", "14:00", "16:00"];
+const PRE_LINK_TYPE = "PRE";
+const DIVISION_PRE_NETWORK = "PRE(행정군수망)";
+const BRIGADE_PRE_NETWORK = "PRE(위치취합보고)";
 const BRIGADE_UNITS = ["0FA", "1FA", "2FA", "3FA", "4FA"];
 const BRIGADE_CF_SLOTS = [
   { slotKey: "08:00", label: "08:00", isManualTime: false },
@@ -29,8 +34,10 @@ const elements = {
   authorPm: document.querySelector("#author-pm"),
   journalBlocks: document.querySelector("#journal-blocks"),
   divisionBody: document.querySelector("#division-body"),
+  divisionPreBody: document.querySelector("#division-pre-body"),
   brigadeCfBody: document.querySelector("#brigade-cf-body"),
-  brigadeFBody: document.querySelector("#brigade-f-body")
+  brigadeFBody: document.querySelector("#brigade-f-body"),
+  brigadePreBody: document.querySelector("#brigade-pre-body")
 };
 
 const state = {
@@ -68,6 +75,13 @@ function buildTemplateRows(dateString) {
     });
   });
 
+  PRE_SLOTS.forEach((slotLabel) => {
+    rows.push(
+      createTemplateRow(dateString, sequence, PRE_LINK_TYPE, DIVISION_PRE_NETWORK, slotLabel, "1DIV")
+    );
+    sequence += 1;
+  });
+
   BRIGADE_CF_SLOTS.forEach((slot) => {
     BRIGADE_UNITS.forEach((unit) => {
       rows.push(createTemplateRow(dateString, sequence, "여단망", "CF", slot.slotKey, unit));
@@ -78,6 +92,15 @@ function buildTemplateRows(dateString) {
   BRIGADE_F_SLOTS.forEach((slot) => {
     BRIGADE_UNITS.forEach((unit) => {
       rows.push(createTemplateRow(dateString, sequence, "여단망", "F", slot.slotKey, unit));
+      sequence += 1;
+    });
+  });
+
+  PRE_SLOTS.forEach((slotLabel) => {
+    BRIGADE_UNITS.forEach((unit) => {
+      rows.push(
+        createTemplateRow(dateString, sequence, PRE_LINK_TYPE, BRIGADE_PRE_NETWORK, slotLabel, unit)
+      );
       sequence += 1;
     });
   });
@@ -102,6 +125,8 @@ function createTemplateRow(dateString, sequence, linkType, network, slotLabel, t
     rxSignal: "",
     counterpartyRank: "",
     counterpartyName: "",
+    preReceiveStatus: "",
+    preReporter: "",
     recordedTime: "",
     updatedAt: ""
   };
@@ -143,6 +168,8 @@ function normalizeRows(dateString, storedRows) {
       rxSignal: normalizeOptionValue(stored.rxSignal, SIGNAL_OPTIONS),
       counterpartyRank: normalizeOptionValue(stored.counterpartyRank, RANK_OPTIONS),
       counterpartyName: typeof stored.counterpartyName === "string" ? stored.counterpartyName : "",
+      preReceiveStatus: normalizeOptionValue(stored.preReceiveStatus, PRE_RECEIVE_STATUS_OPTIONS),
+      preReporter: typeof stored.preReporter === "string" ? stored.preReporter : "",
       recordedTime: typeof stored.recordedTime === "string" ? stored.recordedTime : "",
       updatedAt: typeof stored.updatedAt === "string" ? stored.updatedAt : ""
     };
@@ -196,6 +223,10 @@ function isDivisionRow(row) {
   return row.linkType === "사단망";
 }
 
+function isPreRow(row) {
+  return row.linkType === PRE_LINK_TYPE;
+}
+
 function isCfManualRow(row) {
   return (
     row.linkType === "여단망" &&
@@ -213,6 +244,18 @@ function requiresRecordedTime(row) {
 }
 
 function isRowComplete(row) {
+  if (isPreRow(row)) {
+    if (!row.preReceiveStatus) {
+      return false;
+    }
+
+    if (row.preReceiveStatus === "성공") {
+      return Boolean(row.preReporter && row.preReporter.trim());
+    }
+
+    return true;
+  }
+
   const hasBaseFields = Boolean(
     row.txSignal &&
       row.rxSignal &&
@@ -267,7 +310,37 @@ function findRow(lookup, linkType, network, slotLabel, targetUnit) {
   return lookup.get(getRowKey(linkType, network, slotLabel, targetUnit)) || null;
 }
 
+function renderPreCell(row) {
+  if (!row) {
+    return '<td class="matrix-cell"><div class="cell-editor missing">-</div></td>';
+  }
+
+  const complete = isRowComplete(row);
+  const stateClass = complete ? "complete" : "pending";
+
+  return `<td class="matrix-cell">
+    <div class="cell-editor ${stateClass}" data-row-cell="${escapeHtml(row.id)}">
+      <div class="editor-grid pre-grid">
+        <label class="editor-field">
+          <span>수신상태</span>
+          <select data-id="${escapeHtml(row.id)}" data-field="preReceiveStatus">
+            ${renderSelectOptions(PRE_RECEIVE_STATUS_OPTIONS, row.preReceiveStatus)}
+          </select>
+        </label>
+        <label class="editor-field">
+          <span>상대 보고자</span>
+          <input data-id="${escapeHtml(row.id)}" data-field="preReporter" type="text" value="${escapeHtml(row.preReporter)}" />
+        </label>
+      </div>
+    </div>
+  </td>`;
+}
+
 function renderEditorCell(row) {
+  if (row && isPreRow(row)) {
+    return renderPreCell(row);
+  }
+
   if (!row) {
     return '<td class="matrix-cell"><div class="cell-editor missing">-</div></td>';
   }
@@ -313,14 +386,26 @@ function renderEditorCell(row) {
 }
 
 function renderDivisionRows(lookup) {
-  elements.divisionBody.innerHTML = DIVISION_NETWORKS
-    .map((network) => {
-      const cells = DIVISION_SLOTS
-        .map((slotLabel) => renderEditorCell(findRow(lookup, "사단망", network, slotLabel, "1DIV")))
+  elements.divisionBody.innerHTML = DIVISION_SLOTS
+    .map((slotLabel) => {
+      const cells = DIVISION_NETWORKS
+        .map((network) => renderEditorCell(findRow(lookup, "사단망", network, slotLabel, "1DIV")))
         .join("");
       return `<tr>
-        <th class="row-label" scope="row">${escapeHtml(network)}</th>
+        <th class="row-label" scope="row">${escapeHtml(slotLabel)}</th>
         ${cells}
+      </tr>`;
+    })
+    .join("");
+}
+
+function renderDivisionPreRows(lookup) {
+  elements.divisionPreBody.innerHTML = PRE_SLOTS
+    .map((slotLabel) => {
+      const row = findRow(lookup, PRE_LINK_TYPE, DIVISION_PRE_NETWORK, slotLabel, "1DIV");
+      return `<tr>
+        <th class="row-label" scope="row">${escapeHtml(slotLabel)}</th>
+        ${renderPreCell(row)}
       </tr>`;
     })
     .join("");
@@ -368,11 +453,27 @@ function renderBrigadeRows(lookup, network, slots, bodyElement) {
     .join("");
 }
 
+function renderBrigadePreRows(lookup) {
+  elements.brigadePreBody.innerHTML = PRE_SLOTS
+    .map((slotLabel) => {
+      const cells = BRIGADE_UNITS
+        .map((unit) => renderPreCell(findRow(lookup, PRE_LINK_TYPE, BRIGADE_PRE_NETWORK, slotLabel, unit)))
+        .join("");
+      return `<tr>
+        <th class="row-label" scope="row">${escapeHtml(slotLabel)}</th>
+        ${cells}
+      </tr>`;
+    })
+    .join("");
+}
+
 function renderTables() {
   const lookup = createRowLookup(state.rows);
   renderDivisionRows(lookup);
+  renderDivisionPreRows(lookup);
   renderBrigadeRows(lookup, "CF", BRIGADE_CF_SLOTS, elements.brigadeCfBody);
   renderBrigadeRows(lookup, "F", BRIGADE_F_SLOTS, elements.brigadeFBody);
+  renderBrigadePreRows(lookup);
 }
 
 function loadDate(dateString) {

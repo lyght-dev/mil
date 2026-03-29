@@ -595,3 +595,70 @@
 - `node --check /workspaces/mil/radiolog/script.js` 통과.
 - `rg -n "recordedTime|CF-직접입력|data-time-scope" /workspaces/mil/radiolog/script.js`로 핵심 반영 확인.
 - `rg -n "44건|직접입력|실제시간|시간 입력 대상" /workspaces/mil/radiolog/SPEC.md`로 문서 반영 확인.
+
+### 추가 작업 요약 (radiolog Meta 카드 분리 제거 및 단일 플랫 바 통합)
+- 사용자 요청에 따라 `radiolog/index.html`의 상단 Meta 구성을 재편함.
+- 기존 분리 구조(`report-header` + 별도 `author-record` 섹션)를 하나의 메타 영역으로 통합하고, 제목/기준일/버튼/작성자 입력을 단일 바에서 처리하도록 변경함.
+- 작성자 입력 ID(`author-am`, `author-pm`)와 날짜/버튼 ID(`date-input`, `today-btn`, `reset-btn`)는 유지하여 기존 `script.js` 이벤트/저장 로직 변경 없이 동작하도록 유지함.
+- `radiolog/style.css`에서 메타 카드 느낌(배경 박스, 테두리 박스, 그림자, 큰 라운드)을 제거하고, 하단 경계선 기반의 플랫 레이아웃으로 변경함.
+- 메타바 우측 컨트롤 영역용 클래스(`meta-controls`, `control-row`, `author-inline`, `inline-label`)를 추가해 데스크톱 고정 2열 구조를 구성함.
+- `radiolog/SPEC.md` UI 규칙에 “메타 영역은 단일 플랫 바 구조, 별도 카드 섹션 분리 금지”를 명시해 다음 세션 기준을 고정함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/radiolog/script.js` 통과.
+- `rg -n "author-record|control-block" /workspaces/mil/radiolog/index.html /workspaces/mil/radiolog/style.css` 결과 없음으로 구 구조 제거 확인.
+- `rg -n "meta-controls|control-row|author-inline|inline-label" /workspaces/mil/radiolog/index.html /workspaces/mil/radiolog/style.css`로 신규 구조 반영 확인.
+
+### 추가 작업 요약 (radiolog 시간 행 기준 고정 + 사단/여단 1열 폭 통일)
+- 사용자 요청에 맞춰 사단망/여단망 모두 row를 시간 기준으로 유지하도록 정렬 기준을 고정함.
+- 사단망 헤더의 좌상단 라벨을 `시간 \ 망`으로 정리해 현재 렌더 축(`오전/오후` 행, `작전망/행정군수망` 열)과 문구를 일치시킴.
+- `radiolog/style.css`에서 1번 컬럼 폭 규칙을 단일화함.
+- 기존 분기(`.row-label` 80px + `.brigade-table .row-label` 108px)를 제거하고, 사단망/여단망 공통으로 108px 고정폭(`width/min-width/max-width`)을 적용함.
+- 테이블 헤더의 첫 컬럼(`.matrix-table thead th:first-child`)에도 동일한 108px 고정폭을 적용해 본문 행 라벨 폭과 일치시킴.
+- `radiolog/SPEC.md`를 갱신함.
+- 사단망 축 규칙을 `시간(행) x 망(열)`으로 수정.
+- 사단망/여단망 1번 컬럼 동일 고정폭 유지 규칙을 추가.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/radiolog/script.js` 통과.
+- `rg -n "시간 \\ 망|사단망은 `시간\(행\) x 망\(열\)`|1번 컬럼" /workspaces/mil/radiolog/index.html /workspaces/mil/radiolog/SPEC.md`로 문구 반영 확인.
+- `rg -n "\.row-label|thead th:first-child|brigade-table \\.row-label" /workspaces/mil/radiolog/style.css`로 1열 폭 단일 규칙 반영 확인.
+
+### 추가 작업 요약 (radiolog 사단/여단 PRE 추가)
+- 사용자 요청에 따라 PRE 수신 기록 기능을 사단망/여단망에 확장함.
+- 사단망에 `PRE(행정군수망)`을 추가했고, 기존 사단망 표 우측에 PRE 전용 표를 병렬 배치함.
+- 여단망에 `PRE(위치취합보고)`를 추가했고, `F` 표 아래에 PRE 전용 표를 별도 분리 배치함.
+- PRE 시간 슬롯은 고정 `08:00/10:00/12:00/14:00/16:00` 5행으로 구성함.
+- PRE 입력 모델을 일반 교신 입력과 분리함.
+- PRE 전용 필드 `preReceiveStatus(성공/실패)`, `preReporter(상대 보고자)`를 row 데이터에 추가함.
+- PRE 완료 판정은 `수신상태` 필수, `수신상태=성공`일 때만 `상대 보고자` 필수, `실패`는 보고자 선택으로 구현함.
+- 템플릿 자동생성 행 수가 기존 44건에서 74건으로 증가함.
+- 사단 PRE 5행(`1DIV` 대상) + 여단 PRE 25행(`0FA~4FA` 대상)을 추가함.
+- 기존 localStorage 키 체계는 유지하고, 구버전 데이터 로드시 PRE 필드는 빈 문자열로 정규화해 호환되도록 처리함.
+- `index.html`에 `division-pre-body`, `brigade-pre-body` 테이블 바디를 추가하고 `script.js` 렌더링을 연결함.
+- `style.css`에 사단 병렬 배치용 `.division-grid`를 추가함.
+- 1번 컬럼 고정폭(108px) 규칙은 사단/여단/PRE 표 모두 동일하게 유지됨.
+- `radiolog/SPEC.md`를 PRE 반영 내용으로 갱신함(고정 운용 대상, 템플릿, 입력/완료 판정, UI 배치, 저장 필드).
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/radiolog/script.js` 통과.
+- `rg -n "division-pre-body|brigade-pre-body|PRE\(행정군수망\)|PRE\(위치취합보고\)" /workspaces/mil/radiolog/index.html /workspaces/mil/radiolog/script.js /workspaces/mil/radiolog/SPEC.md`로 구조/문구 반영 확인.
+- `rg -n "PRE_RECEIVE_STATUS_OPTIONS|PRE_LINK_TYPE|PRE_SLOTS|preReceiveStatus|preReporter|renderDivisionPreRows|renderBrigadePreRows" /workspaces/mil/radiolog/script.js`로 핵심 로직 반영 확인.
+- `rg -n "74건|수신 상태=성공|수신 상태=실패|우측에 별도 표|F\` 표 아래" /workspaces/mil/radiolog/SPEC.md`로 명세 반영 확인.
+
+### 추가 작업 요약 (radiolog 외부망/내부망 헤딩 구분 추가)
+- 사용자 요청에 따라 무선 일지 표 영역의 헤딩 계층을 외부망/내부망 기준으로 재구성함.
+- `index.html`에서 상위 그룹 헤딩을 추가함.
+- `외부망`(h1) 아래 `사단망`(h2) 배치.
+- `내부망`(h1) 아래 `여단망`(h2) 배치.
+- 여단 하위 세부망(`CF`, `F`, `PRE(위치취합보고)`)은 `h3`로 조정해 계층을 명확히 함.
+- 표 자체(사단 일반/PRE 병렬, 여단 CF/F/PRE 순서), 입력 모델, 저장/완료 로직은 변경하지 않음.
+- `style.css`에 망 헤딩용 `.network-major` 스타일을 추가해 그룹(h1) 대비 한 단계 낮은 시각 계층을 제공함.
+- `SPEC.md` UI 규칙의 헤딩 계층을 `h1=외부/내부망`, `h2=사단/여단망`, `h3=CF/F/PRE`로 갱신함.
+- 현재 운용상 외부망=사단망, 내부망=여단망만 존재하더라도 화면 구분 헤딩을 별도로 표시한다는 규칙을 명시함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/radiolog/script.js` 통과.
+- `nl -ba /workspaces/mil/radiolog/index.html | sed -n '40,112p'`로 헤딩 계층 반영 확인.
+- `nl -ba /workspaces/mil/radiolog/style.css | sed -n '218,238p'`로 `.network-major` 스타일 반영 확인.
+- `nl -ba /workspaces/mil/radiolog/SPEC.md | sed -n '86,100p'`로 문서 규칙 반영 확인.
