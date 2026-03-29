@@ -739,3 +739,37 @@
 ### 추가 검증 메모
 - `node --check /workspaces/mil/radiolog/script.js` 통과.
 - `rg -n "guide-stack|editor-grid|grid-auto-rows|minmax\(32px, 1fr\)|height: 100%|하단 여백 없이" /workspaces/mil/radiolog/style.css /workspaces/mil/radiolog/SPEC.md`로 반영 확인.
+
+### 추가 작업 요약 (radiolog 행별 비고 팝오버 UX 도입)
+- 사용자 합의안(팝오버형) 기준으로 각 교신 행(일반/PRE 공통)에 `비고` 입력 UX를 추가함.
+- `radiolog/index.html`에 전역 팝오버 컨테이너(`note-popover`)와 `textarea`/닫기 버튼을 추가함.
+- `radiolog/script.js` 데이터 모델에 `note` 문자열 필드를 추가함.
+- 템플릿 생성 시 `note: ""` 초기화, 저장 데이터 로드시 `note` 미존재 레코드는 빈 문자열로 정규화하도록 반영함.
+- 일반 교신 셀/ PRE 셀 모두 우상단에 `비고` 트리거 버튼을 렌더링하도록 변경함.
+- 팝오버 동작을 추가함.
+- 행별 토글 오픈(동일 버튼 재클릭 시 닫기)
+- 바깥 클릭/`Esc`/닫기 버튼/다른 셀 버튼 클릭 시 닫기
+- 동시에 1개 팝오버만 유지
+- 저장 시점은 사용자 선택대로 `팝오버 닫을 때`로 구현
+- 저장 후 해당 셀 버튼에 `has-note` 상태(점/강조) 반영함.
+- 날짜 변경/리셋 시 열려 있는 팝오버를 먼저 닫고 저장하도록 처리해 입력 유실을 방지함.
+- `radiolog/style.css`에 비고 버튼/상태점/팝오버 스타일을 추가하고, 기존 셀 입력과 겹치지 않도록 `editor-grid` 우측 패딩을 조정함.
+- `radiolog/SPEC.md`를 갱신해 비고 입력 규칙, 저장 필드(`note`), 팝오버 UX/저장 시점/상태 표시 규칙을 명시함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/radiolog/script.js` 통과.
+- `rg -n "note|비고|note-popover|data-note-trigger" /workspaces/mil/radiolog/index.html /workspaces/mil/radiolog/script.js /workspaces/mil/radiolog/style.css /workspaces/mil/radiolog/SPEC.md`로 반영 확인.
+
+### 추가 작업 요약 (radiolog 비고 버튼 원형화 + hover 툴팁)
+- 사용자 요청에 따라 비고 트리거를 텍스트 버튼에서 `16x16` 원형 버튼으로 변경함.
+- `radiolog/script.js`의 `renderNoteTrigger`에서 버튼 내부 가시 텍스트를 제거하고 접근성용 숨김 텍스트만 유지함.
+- 버튼에 `data-note-tooltip="비고작성"` 속성을 부여해 hover/focus 툴팁 문구를 고정함.
+- `radiolog/style.css`에서 `.note-trigger`를 원형 크기/정렬 기준으로 재정의함.
+- 비고 존재 상태(`has-note`)는 원형 내부 점 크기/명도 강조로 표시되도록 변경함.
+- hover/focus 시 원형 버튼 위에 `비고작성` 툴팁이 나타나도록 `::after` 기반 표시를 추가함.
+- 공통 `button:hover` 규칙과 충돌하지 않도록 `.note-trigger:hover, :focus-visible` 전용 스타일을 분리함.
+- `radiolog/SPEC.md` UI 규칙에 `16x16 원형 비고 버튼`과 `비고작성 툴팁` 기준을 반영함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/radiolog/script.js` 통과.
+- `rg -n "data-note-tooltip|note-trigger|visually-hidden|비고작성|16x16" /workspaces/mil/radiolog/script.js /workspaces/mil/radiolog/style.css /workspaces/mil/radiolog/SPEC.md`로 반영 확인.

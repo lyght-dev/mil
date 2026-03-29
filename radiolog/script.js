@@ -37,12 +37,17 @@ const elements = {
   divisionPreBody: document.querySelector("#division-pre-body"),
   brigadeCfBody: document.querySelector("#brigade-cf-body"),
   brigadeFBody: document.querySelector("#brigade-f-body"),
-  brigadePreBody: document.querySelector("#brigade-pre-body")
+  brigadePreBody: document.querySelector("#brigade-pre-body"),
+  notePopover: document.querySelector("#note-popover"),
+  noteTextarea: document.querySelector("#note-textarea"),
+  noteCloseButton: document.querySelector("#note-close-btn")
 };
 
 const state = {
   currentDate: "",
-  rows: []
+  rows: [],
+  activeNoteRowId: "",
+  activeNoteAnchor: null
 };
 
 function formatDate(date) {
@@ -127,6 +132,7 @@ function createTemplateRow(dateString, sequence, linkType, network, slotLabel, t
     counterpartyName: "",
     preReceiveStatus: "",
     preReporter: "",
+    note: "",
     recordedTime: "",
     updatedAt: ""
   };
@@ -177,6 +183,7 @@ function normalizeRows(dateString, storedRows) {
       counterpartyName: normalizedCounterpartyName,
       preReceiveStatus: normalizeOptionValue(stored.preReceiveStatus, PRE_RECEIVE_STATUS_OPTIONS),
       preReporter: typeof stored.preReporter === "string" ? stored.preReporter : "",
+      note: typeof stored.note === "string" ? stored.note : "",
       recordedTime: typeof stored.recordedTime === "string" ? stored.recordedTime : "",
       updatedAt: typeof stored.updatedAt === "string" ? stored.updatedAt : ""
     };
@@ -324,6 +331,20 @@ function findRow(lookup, linkType, network, slotLabel, targetUnit) {
   return lookup.get(getRowKey(linkType, network, slotLabel, targetUnit)) || null;
 }
 
+function renderNoteTrigger(row) {
+  const hasNoteClass = row.note ? " has-note" : "";
+  return `<button
+      type="button"
+      class="note-trigger${hasNoteClass}"
+      aria-label="비고 입력"
+      aria-expanded="false"
+      data-note-trigger="${escapeHtml(row.id)}"
+      data-note-tooltip="비고작성"
+    >
+      <span class="visually-hidden">비고</span>
+    </button>`;
+}
+
 function renderPreCell(row) {
   if (!row) {
     return '<td class="matrix-cell"><div class="cell-editor missing">-</div></td>';
@@ -334,6 +355,7 @@ function renderPreCell(row) {
 
   return `<td class="matrix-cell">
     <div class="cell-editor ${stateClass}" data-row-cell="${escapeHtml(row.id)}">
+      ${renderNoteTrigger(row)}
       <div class="editor-grid">
         <div class="editor-row">
           <div class="editor-controls">
@@ -400,6 +422,7 @@ function renderEditorCell(row) {
 
   return `<td class="matrix-cell">
     <div class="cell-editor ${stateClass}" data-row-cell="${escapeHtml(row.id)}">
+      ${renderNoteTrigger(row)}
       <div class="editor-grid">
         ${divisionTimeField}
         <div class="editor-row">
@@ -545,7 +568,136 @@ function renderTables() {
   renderBrigadePreRows(lookup);
 }
 
+function getRowById(rowId) {
+  return state.rows.find((row) => row.id === rowId) || null;
+}
+
+function findNoteTriggerButton(rowId) {
+  const triggers = document.querySelectorAll("[data-note-trigger]");
+  for (const trigger of triggers) {
+    if (!(trigger instanceof HTMLButtonElement)) {
+      continue;
+    }
+    if (trigger.dataset.noteTrigger === rowId) {
+      return trigger;
+    }
+  }
+  return null;
+}
+
+function updateNoteTriggerState(row) {
+  const trigger = findNoteTriggerButton(row.id);
+  if (!trigger) {
+    return;
+  }
+  trigger.classList.toggle("has-note", Boolean(row.note));
+}
+
+function setActiveNoteTrigger(trigger) {
+  trigger.classList.add("active");
+  trigger.setAttribute("aria-expanded", "true");
+}
+
+function clearActiveNoteTrigger() {
+  if (!(state.activeNoteAnchor instanceof HTMLButtonElement)) {
+    return;
+  }
+  state.activeNoteAnchor.classList.remove("active");
+  state.activeNoteAnchor.setAttribute("aria-expanded", "false");
+}
+
+function positionNotePopover() {
+  if (!elements.notePopover || !(state.activeNoteAnchor instanceof HTMLButtonElement)) {
+    return;
+  }
+
+  const margin = 8;
+  const gap = 6;
+  const anchorRect = state.activeNoteAnchor.getBoundingClientRect();
+  const popover = elements.notePopover;
+  const popoverRect = popover.getBoundingClientRect();
+
+  let left = anchorRect.right - popoverRect.width;
+  if (left < margin) {
+    left = margin;
+  }
+  if (left + popoverRect.width > window.innerWidth - margin) {
+    left = window.innerWidth - margin - popoverRect.width;
+  }
+
+  let top = anchorRect.bottom + gap;
+  if (top + popoverRect.height > window.innerHeight - margin) {
+    top = anchorRect.top - popoverRect.height - gap;
+  }
+  if (top < margin) {
+    top = margin;
+  }
+
+  popover.style.left = `${Math.round(left)}px`;
+  popover.style.top = `${Math.round(top)}px`;
+}
+
+function closeNotePopover(shouldCommit) {
+  if (!state.activeNoteRowId) {
+    return;
+  }
+
+  if (shouldCommit && elements.noteTextarea) {
+    const row = getRowById(state.activeNoteRowId);
+    if (row) {
+      const nextNote = typeof elements.noteTextarea.value === "string" ? elements.noteTextarea.value : "";
+      if (row.note !== nextNote) {
+        row.note = nextNote;
+        saveCurrentRows();
+        updateNoteTriggerState(row);
+      }
+    }
+  }
+
+  if (elements.notePopover) {
+    elements.notePopover.hidden = true;
+  }
+
+  clearActiveNoteTrigger();
+  state.activeNoteRowId = "";
+  state.activeNoteAnchor = null;
+}
+
+function openNotePopover(rowId, trigger) {
+  if (!elements.notePopover || !elements.noteTextarea) {
+    return;
+  }
+
+  if (state.activeNoteRowId === rowId) {
+    closeNotePopover(true);
+    return;
+  }
+
+  if (state.activeNoteRowId) {
+    closeNotePopover(true);
+  }
+
+  const row = getRowById(rowId);
+  if (!row) {
+    return;
+  }
+
+  state.activeNoteRowId = row.id;
+  state.activeNoteAnchor = trigger;
+
+  elements.noteTextarea.value = row.note || "";
+  elements.notePopover.hidden = false;
+  setActiveNoteTrigger(trigger);
+  positionNotePopover();
+
+  elements.noteTextarea.focus();
+  const caret = elements.noteTextarea.value.length;
+  elements.noteTextarea.setSelectionRange(caret, caret);
+}
+
 function loadDate(dateString) {
+  closeNotePopover(true);
+
   const storedRows = readStoredRows(dateString);
   const rows = normalizeRows(dateString, storedRows);
 
@@ -645,6 +797,25 @@ function handleAuthorInput(event) {
   saveAuthorFields();
 }
 
+function handleRowsClick(event) {
+  const target = event.target;
+  if (!(target instanceof Element)) {
+    return;
+  }
+
+  const trigger = target.closest("[data-note-trigger]");
+  if (!(trigger instanceof HTMLButtonElement)) {
+    return;
+  }
+
+  const rowId = trigger.dataset.noteTrigger;
+  if (!rowId) {
+    return;
+  }
+
+  openNotePopover(rowId, trigger);
+}
+
 function handleRowsInput(event) {
   const target = event.target;
   if (!(target instanceof HTMLInputElement) && !(target instanceof HTMLSelectElement)) {
@@ -660,6 +831,47 @@ function handleRowsInput(event) {
     return;
   }
   updateRowField(target);
+}
+
+function handleDocumentMouseDown(event) {
+  if (!state.activeNoteRowId) {
+    return;
+  }
+
+  const target = event.target;
+  if (!(target instanceof Element)) {
+    closeNotePopover(true);
+    return;
+  }
+
+  if (elements.notePopover && elements.notePopover.contains(target)) {
+    return;
+  }
+
+  if (target.closest("[data-note-trigger]")) {
+    return;
+  }
+
+  closeNotePopover(true);
+}
+
+function handleDocumentKeyDown(event) {
+  if (event.key !== "Escape" || !state.activeNoteRowId) {
+    return;
+  }
+  event.preventDefault();
+  closeNotePopover(true);
+}
+
+function handleNoteCloseClick() {
+  closeNotePopover(true);
+}
+
+function handleWindowViewportChange() {
+  if (!state.activeNoteRowId) {
+    return;
+  }
+  positionNotePopover();
 }
 
 function handleDateChange() {
@@ -679,14 +891,22 @@ function handleResetClick() {
     return;
   }
 
+  closeNotePopover(true);
   state.rows = buildTemplateRows(state.currentDate);
   saveCurrentRows();
   renderTables();
 }
 
 function initialize() {
+  document.addEventListener("mousedown", handleDocumentMouseDown);
+  document.addEventListener("keydown", handleDocumentKeyDown);
+  window.addEventListener("resize", handleWindowViewportChange);
+  window.addEventListener("scroll", handleWindowViewportChange, true);
+
+  elements.journalBlocks.addEventListener("click", handleRowsClick);
   elements.journalBlocks.addEventListener("input", handleRowsInput);
   elements.journalBlocks.addEventListener("change", handleRowsInput);
+  elements.noteCloseButton.addEventListener("click", handleNoteCloseClick);
   elements.authorAm.addEventListener("input", handleAuthorInput);
   elements.authorPm.addEventListener("input", handleAuthorInput);
   elements.dateInput.addEventListener("change", handleDateChange);

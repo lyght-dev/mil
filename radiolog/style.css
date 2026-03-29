@@ -322,6 +322,7 @@ button:hover {
 }
 
 .cell-editor {
+  position: relative;
   width: 100%;
   height: 100%;
   padding: 0;
@@ -355,6 +356,7 @@ button:hover {
   display: grid;
   height: 100%;
   min-height: 100%;
+  padding-right: 40px;
   gap: 0;
   grid-auto-rows: minmax(32px, 1fr);
 }
@@ -383,4 +385,143 @@ button:hover {
 .slot-time-field {
   display: grid;
   gap: 4px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.note-trigger {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  width: 16px;
+  min-width: 16px;
+  height: 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: #f4f4f4;
+  color: transparent;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.12s ease, background-color 0.12s ease;
+}
+
+.note-trigger::before {
+  content: "";
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: #8a8a8a;
+  opacity: 0.6;
+}
+
+.note-trigger.active,
+.note-trigger.has-note {
+  border-color: var(--accent);
+  background: #ebebeb;
+}
+
+.note-trigger:hover,
+.note-trigger:focus-visible {
+  border-color: var(--accent);
+  background: #e8e8e8;
+}
+
+.note-trigger.active::before,
+.note-trigger.has-note::before {
+  width: 6px;
+  height: 6px;
+  background: var(--accent);
+  opacity: 1;
+}
+
+.note-trigger::after {
+  content: attr(data-note-tooltip);
+  position: absolute;
+  right: 50%;
+  top: -29px;
+  transform: translateX(50%) translateY(2px);
+  padding: 3px 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: #2f2f2f;
+  color: #ffffff;
+  font-size: 0.66rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.note-trigger:hover::after,
+.note-trigger:focus-visible::after {
+  opacity: 1;
+  transform: translateX(50%) translateY(0);
+}
+
+.note-popover {
+  position: fixed;
+  z-index: 80;
+  width: 280px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  padding: 8px;
+}
+
+.note-popover-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.note-popover-title {
+  color: var(--text);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.note-close-btn {
+  height: 24px;
+  border-radius: 8px;
+  padding: 0 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.note-textarea {
+  width: 100%;
+  min-height: 112px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-strong);
+  font: inherit;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  padding: 7px 8px;
+  resize: vertical;
+}
+
+.note-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--focus-ring);
 }
