@@ -1,5 +1,33 @@
 # HANDOFF
 
+## 2026-04-01
+
+### 추가 작업 요약 (radiolog `/view` 인쇄 시 표 분리 방지)
+- 사용자 요청에 따라 `/view` 인쇄 시 표가 페이지 중간에서 분리되지 않도록 print 전용 스타일을 추가함.
+- 후속 요청에 따라 `/view` 인쇄 시 상단 메타 영역(`기준일/작성자`)이 출력되지 않도록 `.view-header { display: none; }`를 print 규칙에 추가함.
+- 후속 요청에 따라 `/view` 인쇄 최상단에 `무선반장` 서명란이 표시되도록 인쇄 전용 서명 블록(`.print-signature`)을 추가함.
+- `radiolog/view.css`에 `@media print` 규칙을 추가해 `.table-shell`/`.matrix-table`/`thead`/`tbody`/`tr`에 `break-inside: avoid`와 `page-break-inside: avoid`를 적용함.
+- 표 제목(`.matrix-major`, `.network-major`, `.matrix-minor`) 뒤에서 페이지가 끊기지 않도록 `break-after: avoid`와 `page-break-after: avoid`를 적용함.
+- `radiolog/SPEC.md` UI 규칙에 `/view` 인쇄 시 표를 표 단위로 배치하고 상단 메타 영역을 숨기며 `무선반장` 서명란을 최상단에 표시한다는 기준을 반영함.
+
+### 추가 검증 메모
+- `rg -n "print-signature|@media print|view-header|break-inside: avoid|break-after: avoid" /workspaces/mil/radiolog/view.css /workspaces/mil/radiolog/view.html`로 인쇄 규칙/서명란 반영 확인.
+- `rg -n "/view.*인쇄|표 단위|상단 메타|무선반장" /workspaces/mil/radiolog/SPEC.md`로 명세 반영 확인.
+
+### 추가 작업 요약 (radiolog CF 불시교신 단일화 + 열 폭 축소)
+- 사용자 요청에 따라 CF 수동 슬롯을 `직접입력 1/2`에서 `불시교신` 1개로 단순화함.
+- `radiolog/script.js`의 `BRIGADE_CF_SLOTS`에서 두 번째 수동 슬롯(`CF-직접입력-2`)을 제거하고, 남은 수동 슬롯 라벨을 `불시교신`으로 변경함(기존 키 `CF-직접입력-1` 유지).
+- 사용자 요청에 따라 표의 1열(`시간 \ 망`)과 2열(`구분`) 너비를 추가 축소함.
+- `radiolog/style.css`에서 공통 1열 폭을 `92px`, `구분` 컬럼 폭을 `88px`로 조정함.
+- 후속 요청에 따라 1열(`시간 \ 망`)과 2열(`구분`) 고정폭을 모두 `64px`로 재조정함.
+- `radiolog/SPEC.md`를 갱신해 CF `불시교신` 1개 규칙, 총 행 수 `69건`, `/view` 렌더링 `69행` 기준을 반영함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/radiolog/script.js` 통과.
+- `rg -n "CF-직접입력-1|불시교신|총 행 수는 69건|전체 69행" /workspaces/mil/radiolog/script.js /workspaces/mil/radiolog/SPEC.md`로 슬롯/문서 반영 확인.
+- `rg -n "row-label|thead th:first-child|guide-col-head|guide-label|92px|88px" /workspaces/mil/radiolog/style.css`로 열 폭 반영 확인.
+- `rg -n "row-label|thead th:first-child|guide-col-head|guide-label|64px" /workspaces/mil/radiolog/style.css`로 64px 재조정 반영 확인.
+
 ## 2026-03-29
 
 ### 추가 작업 요약 (radiolog 미교신 셀 전환 UX 추가)
@@ -798,3 +826,60 @@
 ### 추가 검증 메모
 - `node --check /workspaces/mil/radiolog/script.js` 통과.
 - `rg -n "data-note-tooltip|note-trigger|visually-hidden|비고작성|16x16" /workspaces/mil/radiolog/script.js /workspaces/mil/radiolog/style.css /workspaces/mil/radiolog/SPEC.md`로 반영 확인.
+
+### 추가 작업 요약 (radiolog `/view` 읽기전용 모드 추가)
+- 사용자 요청에 따라 `radiolog/view.html`, `radiolog/view.js`, `radiolog/view.css`를 신규 추가해 `/view` 전용 조회 화면을 구현함.
+- `/view`는 기존 매트릭스 구조(사단망/여단망/CF/F/PRE)를 유지하되, 셀 내부를 입력 UI 없이 텍스트 라인으로 표시하는 읽기전용 뷰로 구성함.
+- `radiolog:view.js`에서 데이터 소스를 localStorage SOT로 고정함.
+- 기준일은 `radiolog:selectedDate`를 우선 사용하고, 값이 없으면 오늘 날짜를 사용함.
+- 해당 날짜 `radiolog:journal:<YYYY-MM-DD>` 저장값이 없으면 표를 렌더하지 않고 데이터 없음 안내를 표시함.
+- 저장값이 있을 때는 `normalizeRows`를 통해 전체 74행을 렌더하고 빈 값은 `-`로 표기함.
+- 뷰 모드는 수동 새로고침 기준으로 동작하며 자동 갱신(storage 이벤트/폴링)은 넣지 않음.
+- `radiolog/script.js` 하단 자동 초기화(`initialize()`)를 편집 화면 DOM 존재 시에만 실행하도록 가드 처리해, `view.html`에서 `script.js`를 공용 로드해도 충돌이 없도록 수정함.
+- `radiolog/server.ps1`에 `/view`, `/view.html`, `/view.css`, `/view.js` 라우트를 추가함.
+- `radiolog/SPEC.md`를 갱신해 view 파일 범위/서버 인터페이스/저장 규칙/UI 규칙(읽기전용, 날짜 기준, 데이터 없음 처리, 74행 표시)을 반영함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/radiolog/script.js` 통과.
+- `node --check /workspaces/mil/radiolog/view.js` 통과.
+- `pwsh -NoLogo -NoProfile -Command '$null = [System.Management.Automation.Language.Parser]::ParseFile("/workspaces/mil/radiolog/server.ps1",[ref]$null,[ref]$null); "PARSE_OK"'` 결과 `PARSE_OK` 확인.
+- `rg -n "GET \"/view|view\.html|view\.css|view\.js" /workspaces/mil/radiolog/server.ps1 /workspaces/mil/radiolog/SPEC.md`로 라우트/문서 반영 확인.
+
+### 추가 작업 요약 (radiolog `/view` 비고 빈값 라인 숨김)
+- 사용자 요청에 따라 `/view` 읽기 화면에서 `비고`가 비어 있는 경우 `비고: -` 라인을 출력하지 않도록 조정함.
+- `radiolog/view.js`에서 일반 교신 셀(`renderViewGeneralCell`)과 PRE 셀(`renderViewPreCell`) 모두 `hasDisplayText(row.note)`일 때만 `비고` 라인을 렌더하도록 변경함.
+- `비고` 외 필드의 기존 동작(빈 값 `-` 표기)은 유지함.
+- `radiolog/SPEC.md`에 `/view` 예외 규칙을 추가해, 선택 입력인 `비고`는 값이 있을 때만 라인 표시한다는 점을 명시함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/radiolog/view.js` 통과.
+- `rg -n "hasDisplayText\\(row.note\\)|renderLine\\(\\\"비고\\\"" /workspaces/mil/radiolog/view.js`로 조건부 렌더링 반영 확인.
+- `rg -n '단, `/view`에서 `비고`' /workspaces/mil/radiolog/SPEC.md`로 문서 반영 확인.
+
+### 추가 작업 요약 (radiolog `/view` A4 기준 레이아웃 + 시간/구분 컬럼 축소)
+- 사용자 요청에 따라 `/view` 기본 화면을 A4 세로(210x297mm) 기준으로 보이도록 레이아웃을 조정함.
+- `radiolog/view.css`에 `.view-page` 전용 폭 규칙을 추가해 화면 기본 폭을 `210mm` 기준으로 고정하고, 화면에서는 `min-height: 297mm` + `aspect-ratio: 210 / 297`로 A4 비율 기준을 명시함.
+- `/view`의 시간(1번 컬럼)과 구분(2번 컬럼) 폭을 축소함.
+- `row-label`/첫 헤더 컬럼: `84px`
+- `guide-col-head`/`guide-label`: `76px`
+- 좁아진 구분 컬럼 가독성을 위해 `guide-item`의 내부 패딩/폰트 크기를 함께 줄임.
+- 인쇄 결과도 A4 기준이 되도록 `@page { size: A4 portrait; margin: 8mm; }`를 추가함.
+
+### 추가 검증 메모
+- `rg -n "\.view-page|aspect-ratio: 210 / 297|@page|size: A4|row-label|guide-col-head|guide-label" /workspaces/mil/radiolog/view.css`로 스타일 반영 확인.
+- `rg -n "/view.*A4|시간.*1번 컬럼|구분.*2번 컬럼" /workspaces/mil/radiolog/SPEC.md`로 명세 반영 확인.
+
+### 추가 작업 요약 (radiolog `/view` 전체 비고 미입력 시 구분의 비고 안내 숨김)
+- 사용자 요청에 따라 `/view`에서 전체 행의 `비고(note)`가 모두 비어 있는 경우, `구분` 컬럼 안내의 `비고` 항목도 함께 숨기도록 변경함.
+- `radiolog/view.js`에서 `renderViewTables` 시점에 `showNoteGuide = rows.some((row) => hasDisplayText(row.note))`를 계산하도록 추가함.
+- `showNoteGuide=false`일 때 구분 안내를 아래처럼 축소함.
+- 사단 일반: `교신자/비고` -> `교신자`
+- 사단 PRE/여단 PRE: `수신상태/보고자/비고` -> `수신상태/보고자`
+- 여단 일반: `송수신 감명도/교신자/비고` -> `송수신 감명도/교신자`
+- 기존 셀 본문 규칙(비고 값이 있을 때만 `비고` 라인 표시)은 유지함.
+- `radiolog/SPEC.md`에 "전체 행 비고 미입력 시 구분의 비고 항목 미표시" 규칙을 추가함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/radiolog/view.js` 통과.
+- `rg -n "showNoteGuide|교신자/비고|수신상태\", \"보고자\", \"비고|송수신 감명도\", \"교신자\", \"비고" /workspaces/mil/radiolog/view.js`로 조건부 구분 안내 반영 확인.
+- `rg -n "전체 행의 `비고`가 모두 비어" /workspaces/mil/radiolog/SPEC.md`로 명세 반영 확인.

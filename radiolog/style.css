@@ -260,9 +260,9 @@ button:hover {
 }
 
 .row-label {
-  width: 108px;
-  min-width: 108px;
-  max-width: 108px;
+  width: 64px;
+  min-width: 64px;
+  max-width: 64px;
   padding: 8px 4px;
   background: var(--surface-muted);
   color: var(--text);
@@ -272,21 +272,21 @@ button:hover {
 }
 
 .matrix-table thead th:first-child {
-  width: 108px;
-  min-width: 108px;
-  max-width: 108px;
+  width: 64px;
+  min-width: 64px;
+  max-width: 64px;
 }
 
 .guide-col-head {
-  width: 104px;
-  min-width: 104px;
-  max-width: 104px;
+  width: 64px;
+  min-width: 64px;
+  max-width: 64px;
 }
 
 .guide-label {
-  width: 104px;
-  min-width: 104px;
-  max-width: 104px;
+  width: 64px;
+  min-width: 64px;
+  max-width: 64px;
   padding: 0;
   vertical-align: top;
   background: #f8f8f8;

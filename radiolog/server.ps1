@@ -44,14 +44,34 @@ Add-Route $app GET "/index.html" {
     Send-LocalTextFile -Response $res -FileName "index.html" -ContentType "text/html; charset=utf-8"
 }
 
+Add-Route $app GET "/view" {
+    param($req, $res)
+    Send-LocalTextFile -Response $res -FileName "view.html" -ContentType "text/html; charset=utf-8"
+}
+
+Add-Route $app GET "/view.html" {
+    param($req, $res)
+    Send-LocalTextFile -Response $res -FileName "view.html" -ContentType "text/html; charset=utf-8"
+}
+
 Add-Route $app GET "/style.css" {
     param($req, $res)
     Send-LocalTextFile -Response $res -FileName "style.css" -ContentType "text/css; charset=utf-8"
 }
 
+Add-Route $app GET "/view.css" {
+    param($req, $res)
+    Send-LocalTextFile -Response $res -FileName "view.css" -ContentType "text/css; charset=utf-8"
+}
+
 Add-Route $app GET "/script.js" {
     param($req, $res)
     Send-LocalTextFile -Response $res -FileName "script.js" -ContentType "application/javascript; charset=utf-8"
+}
+
+Add-Route $app GET "/view.js" {
+    param($req, $res)
+    Send-LocalTextFile -Response $res -FileName "view.js" -ContentType "application/javascript; charset=utf-8"
 }
 
 Write-Host ("[radiolog] serving on http://{0}:{1}/" -f $BindHost, $Port)

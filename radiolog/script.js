@@ -20,8 +20,7 @@ const BRIGADE_CF_SLOTS = [
   { slotKey: "12:00", label: "12:00", isManualTime: false },
   { slotKey: "14:00", label: "14:00", isManualTime: false },
   { slotKey: "16:00", label: "16:00", isManualTime: false },
-  { slotKey: "CF-직접입력-1", label: "직접입력 1", isManualTime: true },
-  { slotKey: "CF-직접입력-2", label: "직접입력 2", isManualTime: true }
+  { slotKey: "CF-직접입력-1", label: "불시교신", isManualTime: true }
 ];
 const BRIGADE_F_SLOTS = [{ slotKey: "12:00", label: "직접입력", isManualTime: true }];
 const CF_MANUAL_SLOT_KEYS = BRIGADE_CF_SLOTS.filter((slot) => slot.isManualTime).map(
@@ -1119,4 +1118,23 @@ function initialize() {
   loadDate(initialDate);
 }
 
-initialize();
+if (
+  elements.dateInput &&
+  elements.todayButton &&
+  elements.resetButton &&
+  elements.authorAm &&
+  elements.authorPm &&
+  elements.journalBlocks &&
+  elements.divisionBody &&
+  elements.divisionPreBody &&
+  elements.brigadeCfBody &&
+  elements.brigadeFBody &&
+  elements.brigadePreBody &&
+  elements.notePopover &&
+  elements.noteTextarea &&
+  elements.noteCloseButton &&
+  elements.cellContextMenu &&
+  elements.cellNoContactAction
+) {
+  initialize();
+}
