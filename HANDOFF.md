@@ -819,3 +819,58 @@
 ### 추가 검증 메모
 - `node --check /workspace/mil/ping/script.js` 통과.
 - `rg -n "Each host is one cell|grid-template-columns: repeat\\(5|article class=\\\"cell|renderHeatmap\\(records\\)" /workspace/mil/ping/index.html /workspace/mil/ping/style.css /workspace/mil/ping/script.js`로 반영 확인.
+
+### 추가 작업 요약 (ping CSS 컬러값 토큰화)
+- 사용자 요청에 따라 `ping/style.css`의 색상 직값 사용부를 전부 `:root` 토큰 참조로 통일함.
+- 기존 토큰(`--bg`, `--card`, `--tx`, `--mut`, `--bd`, `--panel`, `--ok-dim`, `--bad-dim`)은 유지하고, 직값 치환용 토큰을 추가함.
+- 추가 토큰: `--ok`, `--bad`, `--btn-hover-bg`, `--tog-bg`, `--tog-knob-bg`, `--tog-on-bg`, `--cell-bd`.
+- `.ok`, `.bad`, `.btn:hover`, `.ui`, `.ui::after`, `.tog input:checked + .ui`, `.cell` border의 색상 직값을 모두 `var(...)` 참조로 변경함.
+- 색상값 자체(톤/명도)는 변경하지 않아 기존 UI 시각 결과를 유지함.
+
+### 추가 검증 메모
+- `rg -n "#[0-9a-fA-F]{3,8}|rgba?\\(|hsla?\\(" /workspaces/mil/ping/style.css | rg -v "^\\d+:\\s*--"` 결과 없음(토큰 선언부 외 직값 제거 확인).
+- `rg -n "#[0-9a-fA-F]{3,8}|rgba?\\(|hsla?\\(" /workspaces/mil/ping/style.css`로 색상 리터럴이 `:root` 토큰 선언부에만 존재함을 확인.
+
+### 추가 작업 요약 (ping 색상 관계식 기반 토큰 리팩터링)
+- 사용자 요청에 따라 `ping/style.css` 색상 토큰을 단순 직값 저장 방식에서 `기준값 + 델타` 계산 방식으로 변경함.
+- 중립 팔레트는 `--tone-h`, `--tone-s`, `--tone-l-bg`를 기준축으로 두고 `--tone-step-*` 델타를 통해 `--panel`, `--card`, `--bd`, `--mut`, `--tx`, `--btn-hover-bg`를 계산하도록 재구성함.
+- 상태 팔레트는 `--ok-h/s/l`, `--bad-h/s/l` 원색 기준과 `--status-dim-s-drop`, `--status-dim-l-drop` 감산값으로 `--ok-dim`, `--bad-dim`을 계산하도록 변경함.
+- 토글/셀 보더도 수치 토큰(`--tog-l`, `--tog-knob-l`, `--cell-bd-alpha`) 기반 파생색으로 맞춰 전체 색 체계를 관계식 중심으로 통일함.
+- 기존 컴포넌트(`.card`, `.meta`, `.btn`, `.ui`, `.cell`)의 토큰 참조 구조는 유지해 CSS 사용부 변경 범위를 최소화함.
+
+### 추가 검증 메모
+- `rg -n "#[0-9a-fA-F]{3,8}|rgba?\\(|oklch\\(|lab\\(|lch\\(" /workspaces/mil/ping/style.css` 결과 없음(HEX/RGB/OKLCH/LAB/LCH 직값 사용 없음).
+- `head -n 80 /workspaces/mil/ping/style.css`로 `:root`가 기준축(`--tone-*`)과 델타(`--tone-step-*`, `--status-dim-*`) 계산식으로 구성됨을 확인.
+
+### 추가 작업 요약 (ping 밝기 상향 + Cell 대비 강화)
+- 사용자 요청에 따라 전체 테마를 한 단계 밝게 조정함.
+- 중립 팔레트 수치 조정: `--tone-l-bg`를 `3% -> 6%`로 올리고 `--tone-step-panel/card/bd/hover`를 각각 상향해 배경/패널/카드가 더 밝게 보이도록 조정함.
+- 상태 셀 대비 강화를 위해 `--status-dim-l-drop`를 키워(`25% -> 32%`) `ok/bad` 셀 배경을 더 짙게 만들고, 셀 텍스트 전용 토큰(`--cell-tx`, `--cell-sub-tx`)을 추가해 밝은 텍스트로 고정함.
+- `.cell`에 `color: var(--cell-tx)`를 적용하고 `.host`, `.status`, `.rtt`에 셀 전용 텍스트 색을 지정했으며, 보조 텍스트 opacity를 `1`로 설정해 가독성을 올림.
+- 셀 경계 식별을 강화하기 위해 `--cell-bd-alpha`를 `0.15 -> 0.3`으로 상향함.
+
+### 추가 검증 메모
+- `rg -n "tone-l-bg|tone-step-panel|tone-step-card|tone-step-bd|tone-step-hover|status-dim|cell-tx|cell-sub-tx|cell-bd-alpha|\\.cell \\{|\\.host|\\.status, \\.rtt" /workspaces/mil/ping/style.css`로 수치/선택자 반영 확인.
+
+### 추가 작업 요약 (ping UI 문구 한글화 + N분 자동갱신 안내)
+- 사용자 요청에 따라 `ping/index.html`의 UI 표기 문구를 한글로 통일함.
+- 문서/헤더 제목 `Ping Heatmap`을 `호스트 핑 현황판`으로 변경함.
+- 서브 문구 `Each host is one cell (5 columns)`를 제거하고 `N분마다 자동 갱신됩니다.` 문구로 교체함.
+- 메타 라벨을 `Endpoint/Last fetch/Status`에서 `요청 경로/마지막 갱신/조회 상태`로 변경함.
+- 버튼/토글 문구를 `Refresh now/Auto refresh`에서 `지금 새로고침/자동 새로고침`으로 변경함.
+- `aria-label`도 한국어(`호스트 핑 상태`)로 변경하고 문서 `lang`을 `ko`로 변경함.
+- `ping/script.js`에 자동 갱신 상수 `autoRefreshIntervalMs = 60000`을 도입하고, 서브 문구의 N값(`id="ri"`)이 실제 갱신 주기와 동기화되도록 처리함.
+- 셀 상태 텍스트를 `success/timeout/error`에서 `정상/시간 초과/오류`로 변환해 표시하도록 `toStatusLabel` 매핑 함수를 추가함.
+- 조회 상태 텍스트를 `Fetching.../OK/Error:`에서 `조회 중.../정상/오류:`로 한글화함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/ping/script.js` 통과.
+- `rg -n "Ping Heatmap|Each host is one cell|Refresh now|Auto refresh|Last fetch|Status|Endpoint|No data|Fetching|Error:|OK" /workspaces/mil/ping/index.html /workspaces/mil/ping/script.js`로 기존 영문 UI 문구 제거 확인.
+
+### 추가 작업 요약 (ping 헤더/버튼 문구 추가 조정)
+- 사용자 요청에 따라 `ping/index.html`의 메인 명칭을 `호스트 핑 현황판`에서 `이더넷 모니터`로 변경함.
+- 문서 제목(`<title>`)과 화면 헤더(`<h1>`)를 동일하게 `이더넷 모니터`로 통일함.
+- 버튼 문구를 `지금 새로고침`에서 `새로고침`으로 간소화함.
+
+### 추가 검증 메모
+- `rg -n "이더넷 모니터|지금 새로고침|새로고침" /workspaces/mil/ping/index.html`로 문구 반영 확인.

@@ -1,12 +1,44 @@
 :root {
-  --bg: #05070b;
-  --card: #0d1117;
-  --tx: #e6edf3;
-  --mut: #98a4b2;
-  --bd: #1f2833;
-  --panel: #0a0f14;
-  --ok-dim: #245d33;
-  --bad-dim: #5a2129;
+  --tone-h: 215;
+  --tone-s: 26%;
+  --tone-l-bg: 6%;
+  --tone-step-panel: 3%;
+  --tone-step-card: 7%;
+  --tone-step-bd: 18%;
+  --tone-step-hover: 10%;
+  --tone-step-mut: 66%;
+  --tone-step-tx: 89%;
+  --tone-s-bd: 16%;
+  --tone-s-mut: 14%;
+  --tone-s-tx: 40%;
+  --bg: hsl(var(--tone-h) var(--tone-s) var(--tone-l-bg));
+  --panel: hsl(var(--tone-h) var(--tone-s) calc(var(--tone-l-bg) + var(--tone-step-panel)));
+  --card: hsl(var(--tone-h) var(--tone-s) calc(var(--tone-l-bg) + var(--tone-step-card)));
+  --bd: hsl(var(--tone-h) var(--tone-s-bd) calc(var(--tone-l-bg) + var(--tone-step-bd)));
+  --mut: hsl(var(--tone-h) var(--tone-s-mut) calc(var(--tone-l-bg) + var(--tone-step-mut)));
+  --tx: hsl(var(--tone-h) var(--tone-s-tx) calc(var(--tone-l-bg) + var(--tone-step-tx)));
+  --btn-hover-bg: hsl(var(--tone-h) var(--tone-s) calc(var(--tone-l-bg) + var(--tone-step-hover)));
+  --tog-l: 28%;
+  --tog-knob-l: 96%;
+  --tog-bg: hsl(var(--tone-h) 19% var(--tog-l));
+  --tog-knob-bg: hsl(var(--tone-h) 44% var(--tog-knob-l));
+  --tog-on-bg: hsl(calc(var(--tone-h) - 5) 59% 37%);
+  --status-dim-s-drop: 18%;
+  --status-dim-l-drop: 32%;
+  --ok-h: 139;
+  --ok-s: 75%;
+  --ok-l: 50%;
+  --bad-h: 0;
+  --bad-s: 100%;
+  --bad-l: 69%;
+  --ok: hsl(var(--ok-h) var(--ok-s) var(--ok-l));
+  --bad: hsl(var(--bad-h) var(--bad-s) var(--bad-l));
+  --ok-dim: hsl(var(--ok-h) calc(var(--ok-s) - var(--status-dim-s-drop)) calc(var(--ok-l) - var(--status-dim-l-drop)));
+  --bad-dim: hsl(var(--bad-h) calc(var(--bad-s) - var(--status-dim-s-drop)) calc(var(--bad-l) - var(--status-dim-l-drop)));
+  --cell-tx: hsl(0 0% 98%);
+  --cell-sub-tx: hsl(0 0% 92%);
+  --cell-bd-alpha: 0.3;
+  --cell-bd: hsl(0 0% 100% / var(--cell-bd-alpha));
 }
 
 * { box-sizing: border-box; }
@@ -27,8 +59,8 @@ h1 { margin: 0; font-size: 24px; }
 .m { display: grid; grid-template-columns: 96px 1fr; gap: 10px; padding: 3px 0; }
 .m > span:first-child { color: var(--mut); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
 .m code, .m > span:last-child { font-size: 13px; }
-.ok { color: #1fdf64 !important; }
-.bad { color: #ff5f5f !important; }
+.ok { color: var(--ok) !important; }
+.bad { color: var(--bad) !important; }
 
 .ctl { display: flex; gap: 14px; align-items: center; padding: 16px 0; }
 .btn {
@@ -41,13 +73,13 @@ h1 { margin: 0; font-size: 24px; }
   font-weight: 600;
   cursor: pointer;
 }
-.btn:hover { background: #131b24; }
+.btn:hover { background: var(--btn-hover-bg); }
 
 .tog { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; }
 .tog input { position: absolute; opacity: 0; }
-.ui { width: 40px; height: 22px; border-radius: 999px; border: 1px solid var(--bd); background: #2b3440; position: relative; }
-.ui::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 999px; background: #dce5ee; transition: transform .12s ease; }
-.tog input:checked + .ui { background: #265d95; }
+.ui { width: 40px; height: 22px; border-radius: 999px; border: 1px solid var(--bd); background: var(--tog-bg); position: relative; }
+.ui::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 999px; background: var(--tog-knob-bg); transition: transform .12s ease; }
+.tog input:checked + .ui { background: var(--tog-on-bg); }
 .tog input:checked + .ui::after { transform: translateX(18px); }
 
 .heatmap {
@@ -66,16 +98,17 @@ h1 { margin: 0; font-size: 24px; }
 .cell {
   min-height: 92px;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid var(--cell-bd);
   padding: 10px;
+  color: var(--cell-tx);
   display: grid;
   align-content: space-between;
 }
 .cell.ok { background: var(--ok-dim); }
 .cell.bad { background: var(--bad-dim); }
 
-.host { font-size: 15px; font-weight: 700; line-height: 1.2; word-break: break-word; }
-.status, .rtt { font-size: 12px; opacity: 0.95; }
+.host { color: var(--cell-tx); font-size: 15px; font-weight: 700; line-height: 1.2; word-break: break-word; }
+.status, .rtt { color: var(--cell-sub-tx); font-size: 12px; opacity: 1; }
 .empty { color: var(--mut); text-align: center; padding: 20px 0 8px; }
 
 @media (max-width: 900px) {
