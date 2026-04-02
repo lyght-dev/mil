@@ -29,8 +29,8 @@ const CF_MANUAL_SLOT_KEYS = BRIGADE_CF_SLOTS.filter((slot) => slot.isManualTime)
 
 const elements = {
   dateInput: document.querySelector("#date-input"),
-  todayButton: document.querySelector("#today-btn"),
   resetButton: document.querySelector("#reset-btn"),
+  viewButton: document.querySelector("#view-btn"),
   authorAm: document.querySelector("#author-am"),
   authorPm: document.querySelector("#author-pm"),
   journalBlocks: document.querySelector("#journal-blocks"),
@@ -398,7 +398,7 @@ function renderPreCell(row) {
           <div class="editor-controls two-col">
             <select
               class="editor-control"
-              aria-label="보고자 계급"
+              aria-label="근무자 계급"
               data-id="${escapeHtml(row.id)}"
               data-field="counterpartyRank"
             >
@@ -406,7 +406,7 @@ function renderPreCell(row) {
             </select>
             <input
               class="editor-control"
-              aria-label="보고자 성명"
+              aria-label="근무자 성명"
               data-id="${escapeHtml(row.id)}"
               data-field="counterpartyName"
               type="text"
@@ -505,7 +505,7 @@ function renderEditorCell(row) {
           <div class="editor-controls two-col">
             <select
               class="editor-control"
-              aria-label="상대 교신자 계급"
+              aria-label="상대 근무자 계급"
               data-id="${escapeHtml(row.id)}"
               data-field="counterpartyRank"
             >
@@ -513,7 +513,7 @@ function renderEditorCell(row) {
             </select>
             <input
               class="editor-control"
-              aria-label="상대 교신자 성명"
+              aria-label="상대 근무자 성명"
               data-id="${escapeHtml(row.id)}"
               data-field="counterpartyName"
               type="text"
@@ -529,7 +529,7 @@ function renderEditorCell(row) {
 function renderDivisionRows(lookup) {
   elements.divisionBody.innerHTML = DIVISION_SLOTS
     .map((slotLabel) => {
-      const guideCell = renderGuideCell(["교신시각", "송수신 감명도", "교신자"]);
+      const guideCell = renderGuideCell(["교신시각", "송수신 감명도", "근무자"]);
       const cells = DIVISION_NETWORKS
         .map((network) => renderEditorCell(findRow(lookup, "사단망", network, slotLabel, "1DIV")))
         .join("");
@@ -548,7 +548,7 @@ function renderDivisionPreRows(lookup) {
       const row = findRow(lookup, PRE_LINK_TYPE, DIVISION_PRE_NETWORK, slotLabel, "1DIV");
       return `<tr>
         <th class="row-label" scope="row">${escapeHtml(slotLabel)}</th>
-        ${renderGuideCell(["수신상태", "보고자"])}
+        ${renderGuideCell(["수신상태", "근무자"])}
         ${renderPreCell(row)}
       </tr>`;
     })
@@ -584,7 +584,7 @@ function renderBrigadeSlotLabel(lookup, network, slot) {
 }
 
 function renderBrigadeRows(lookup, network, slots, bodyElement) {
-  const guideCell = renderGuideCell(["송수신 감명도", "교신자"]);
+  const guideCell = renderGuideCell(["송수신 감명도", "근무자"]);
   bodyElement.innerHTML = slots
     .map((slot) => {
       const cells = BRIGADE_UNITS
@@ -600,7 +600,7 @@ function renderBrigadeRows(lookup, network, slots, bodyElement) {
 }
 
 function renderBrigadePreRows(lookup) {
-  const guideCell = renderGuideCell(["수신상태", "보고자"]);
+  const guideCell = renderGuideCell(["수신상태", "근무자"]);
   elements.brigadePreBody.innerHTML = PRE_SLOTS
     .map((slotLabel) => {
       const cells = BRIGADE_UNITS
@@ -1065,8 +1065,8 @@ function handleDateChange() {
   loadDate(elements.dateInput.value);
 }
 
-function handleTodayClick() {
-  loadDate(getToday());
+function handleViewModeClick() {
+  window.open("/view", "_blank");
 }
 
 function handleResetClick() {
@@ -1110,8 +1110,8 @@ function initialize() {
   elements.authorAm.addEventListener("input", handleAuthorInput);
   elements.authorPm.addEventListener("input", handleAuthorInput);
   elements.dateInput.addEventListener("change", handleDateChange);
-  elements.todayButton.addEventListener("click", handleTodayClick);
   elements.resetButton.addEventListener("click", handleResetClick);
+  elements.viewButton.addEventListener("click", handleViewModeClick);
 
   const savedDate = localStorage.getItem(STORAGE_DATE_KEY);
   const initialDate = savedDate || getToday();
@@ -1120,8 +1120,8 @@ function initialize() {
 
 if (
   elements.dateInput &&
-  elements.todayButton &&
   elements.resetButton &&
+  elements.viewButton &&
   elements.authorAm &&
   elements.authorPm &&
   elements.journalBlocks &&

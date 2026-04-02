@@ -35,9 +35,8 @@ function displayText(value) {
   return value;
 }
 
-function renderLine(label, value) {
+function renderLine(value) {
   return `<div class="view-line">
-    <span class="view-key">${escapeHtml(label)}</span>
     <span class="view-value">${escapeHtml(displayText(value))}</span>
   </div>`;
 }
@@ -53,6 +52,15 @@ function renderCounterparty(row) {
   return rank || name || "";
 }
 
+function renderSignalPair(row) {
+  const tx = hasDisplayText(row.txSignal) ? row.txSignal : "-";
+  const rx = hasDisplayText(row.rxSignal) ? row.rxSignal : "-";
+  if (tx === "-" && rx === "-") {
+    return "-";
+  }
+  return `${tx} / ${rx}`;
+}
+
 function renderViewGeneralCell(row) {
   if (!row) {
     return '<td class="matrix-cell"><div class="view-cell">-</div></td>';
@@ -60,21 +68,20 @@ function renderViewGeneralCell(row) {
 
   const lines = [];
 
-  if (requiresRecordedTime(row)) {
-    lines.push(renderLine("교신시각", row.recordedTime));
+  if (row.linkType === "사단망" && requiresRecordedTime(row)) {
+    lines.push(renderLine(row.recordedTime));
   }
 
   if (isNoContactEnabled(row)) {
-    lines.push(renderLine("상태", "미교신"));
-    lines.push(renderLine("사유", row.noContactReason));
+    lines.push(renderLine("미교신"));
+    lines.push(renderLine(row.noContactReason));
   } else {
-    lines.push(renderLine("송신", row.txSignal));
-    lines.push(renderLine("수신", row.rxSignal));
-    lines.push(renderLine("교신자", renderCounterparty(row)));
+    lines.push(renderLine(renderSignalPair(row)));
+    lines.push(renderLine(renderCounterparty(row)));
   }
 
   if (hasDisplayText(row.note)) {
-    lines.push(renderLine("비고", row.note));
+    lines.push(renderLine(row.note));
   }
 
   return `<td class="matrix-cell"><div class="view-cell">${lines.join("")}</div></td>`;
@@ -86,12 +93,12 @@ function renderViewPreCell(row) {
   }
 
   const lines = [
-    renderLine("수신상태", row.preReceiveStatus),
-    renderLine("보고자", renderCounterparty(row))
+    renderLine(row.preReceiveStatus),
+    renderLine(renderCounterparty(row))
   ];
 
   if (hasDisplayText(row.note)) {
-    lines.push(renderLine("비고", row.note));
+    lines.push(renderLine(row.note));
   }
 
   return `<td class="matrix-cell"><div class="view-cell">${lines.join("")}</div></td>`;
@@ -102,7 +109,7 @@ function renderDivisionViewRows(lookup, showNoteGuide) {
     const guideCell = renderGuideCell([
       "교신시각",
       "송수신 감명도",
-      showNoteGuide ? "교신자/비고" : "교신자"
+      showNoteGuide ? "근무자/비고" : "근무자"
     ]);
     const cells = DIVISION_NETWORKS.map((network) => {
       const row = findRow(lookup, "사단망", network, slotLabel, "1DIV");
@@ -118,7 +125,7 @@ function renderDivisionViewRows(lookup, showNoteGuide) {
 }
 
 function renderDivisionPreViewRows(lookup, showNoteGuide) {
-  const guideLabels = showNoteGuide ? ["수신상태", "보고자", "비고"] : ["수신상태", "보고자"];
+  const guideLabels = showNoteGuide ? ["수신상태", "근무자", "비고"] : ["수신상태", "근무자"];
 
   viewElements.divisionPreBody.innerHTML = PRE_SLOTS.map((slotLabel) => {
     const row = findRow(lookup, PRE_LINK_TYPE, DIVISION_PRE_NETWORK, slotLabel, "1DIV");
@@ -145,7 +152,7 @@ function renderBrigadeViewSlotLabel(lookup, network, slot) {
 
 function renderBrigadeViewRows(lookup, network, slots, bodyElement, showNoteGuide) {
   const guideCell = renderGuideCell(
-    showNoteGuide ? ["송수신 감명도", "교신자", "비고"] : ["송수신 감명도", "교신자"]
+    showNoteGuide ? ["송수신 감명도", "근무자", "비고"] : ["송수신 감명도", "근무자"]
   );
 
   bodyElement.innerHTML = slots.map((slot) => {
@@ -164,7 +171,7 @@ function renderBrigadeViewRows(lookup, network, slots, bodyElement, showNoteGuid
 
 function renderBrigadePreViewRows(lookup, showNoteGuide) {
   const guideCell = renderGuideCell(
-    showNoteGuide ? ["수신상태", "보고자", "비고"] : ["수신상태", "보고자"]
+    showNoteGuide ? ["수신상태", "근무자", "비고"] : ["수신상태", "근무자"]
   );
 
   viewElements.brigadePreBody.innerHTML = PRE_SLOTS.map((slotLabel) => {

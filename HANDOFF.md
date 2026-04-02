@@ -1,5 +1,66 @@
 # HANDOFF
 
+## 2026-04-02
+
+### 추가 작업 요약 (radiolog `교신자 -> 근무자` 스크립트 일괄 변경)
+- 사용자 요청에 따라 `radiolog` 범위 용어를 `교신자`에서 `근무자`로 일괄 변경함.
+- 스크립트로 일괄 치환을 수행함:
+  - `rg -l "교신자" /workspaces/mil/radiolog | xargs perl -0pi -e 's/교신자/근무자/g'`
+- `radiolog/script.js`의 일반/PRE 입력 aria-label 및 `구분` 안내 텍스트를 `근무자` 기준으로 갱신함.
+- `radiolog/view.js`의 일반/PRE `구분` 안내 텍스트(`근무자`, `근무자/비고`)를 갱신함.
+- `radiolog/SPEC.md`의 입력/완료 판정/UI 라벨 문구(`상대 근무자`, `근무자 계급/성명`, `수신상태/근무자`)를 갱신함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/radiolog/script.js` 통과.
+- `node --check /workspaces/mil/radiolog/view.js` 통과.
+- `rg -n "교신자|근무자" /workspaces/mil/radiolog/script.js /workspaces/mil/radiolog/view.js /workspaces/mil/radiolog/SPEC.md`로 radiolog 내 `교신자` 미존재 및 `근무자` 반영 확인.
+
+### 추가 작업 요약 (radiolog PRE 용어 `보고자 -> 교신자` 통일)
+- 사용자 지시에 따라 `radiolog` PRE 관련 표기에서 `보고자`를 `교신자`로 통일함.
+- `radiolog/script.js` PRE 입력 aria-label을 `교신자 계급/교신자 성명`으로 수정함.
+- `radiolog/script.js` PRE `구분` 안내 라벨을 `수신상태/교신자`로 변경함(사단 PRE, 여단 PRE 공통).
+- `radiolog/view.js` PRE `구분` 안내 라벨을 `수신상태/교신자`(비고 포함 변형 포함)로 변경함.
+- `radiolog/SPEC.md` PRE 입력/완료 판정/구분 라벨 및 `/view` 라벨 설명에서 `보고자` 용어를 `교신자`로 갱신함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/radiolog/script.js` 통과.
+- `node --check /workspaces/mil/radiolog/view.js` 통과.
+- `rg -n "보고자|교신자 계급|교신자 성명|수신상태\", \"교신자" /workspaces/mil/radiolog/script.js /workspaces/mil/radiolog/view.js /workspaces/mil/radiolog/SPEC.md`로 용어 교체 반영 확인.
+
+### 추가 작업 요약 (radiolog `/view` CF 불시교신/F 셀 내부 시간 표시 제거)
+- 사용자 요청에 따라 `/view`에서 `CF 불시교신` 및 `F` 행 셀 내부의 시간값 표시를 제거함.
+- `radiolog/view.js`의 일반 셀 시간 렌더 조건을 `사단망` 행으로 제한해(`row.linkType === "사단망"`), 여단망(`CF/F`)은 셀 내부 `recordedTime` 라인이 출력되지 않도록 수정함.
+- 저장/완료 판정에 사용하는 `requiresRecordedTime` 로직은 유지하고, `/view` 표시 규칙만 최소 변경함.
+- `radiolog/SPEC.md`에 `/view` 시간 표시 예외 규칙(CF 불시교신/F 셀 내부 미표시)을 반영함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/radiolog/view.js` 통과.
+- `rg -n "row.linkType === \"사단망\" && requiresRecordedTime|renderLine\\(row.recordedTime\\)" /workspaces/mil/radiolog/view.js`로 조건 반영 확인.
+- `rg -n "/view.*CF 불시교신.*F.*셀.*표시하지 않는다" /workspaces/mil/radiolog/SPEC.md`로 명세 반영 확인.
+
+### 추가 작업 요약 (radiolog `/view` 셀 내부 라벨 제거)
+- 사용자 요청에 따라 `/view` 모드에서 `구분` 컬럼과 중복되는 셀 내부 항목 라벨 텍스트를 제거함.
+- `radiolog/view.js`의 셀 렌더를 값 전용으로 변경해 `교신시각/송신/수신/교신자/수신상태/보고자/비고` 라벨을 출력하지 않도록 수정함.
+- 일반 교신 셀의 감명도는 `송신/수신` 2줄 대신 `송신값 / 수신값` 1줄로 합쳐 `구분`의 `송수신 감명도` 항목과 1:1로 맞춤.
+- `radiolog/view.css`에서 `.view-line`을 단일 컬럼으로 변경하고, 사용하지 않는 `.view-key` 스타일을 제거함.
+- `radiolog/SPEC.md`에 `/view` 셀 내부 라벨 미표시 규칙을 반영함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/radiolog/view.js` 통과.
+- `rg -n "renderLine\\(|renderSignalPair|교신시각|송신|수신|교신자|수신상태|보고자|비고\" /workspaces/mil/radiolog/view.js`로 값 전용 렌더 반영 확인.
+- `rg -n "view-line|view-key|grid-template-columns: 1fr" /workspaces/mil/radiolog/view.css`로 스타일 정리 반영 확인.
+- `rg -n "/view.*셀 내부.*값만 표시" /workspaces/mil/radiolog/SPEC.md`로 명세 반영 확인.
+
+### 추가 작업 요약 (radiolog `/view` 시간/구분 64px 고정 적용)
+- 사용자 지적에 따라 `/view` 모드에서 `시간`/`구분` 컬럼 폭이 64px로 적용되지 않던 문제를 수정함.
+- 원인은 `radiolog/view.css`가 공통 `style.css`의 64px 규칙을 `84px`/`76px`로 덮어쓰고 있던 점이었음.
+- `radiolog/view.css`에서 `.view-page .row-label`, `.view-page .matrix-table thead th:first-child`, `.view-page .guide-col-head`, `.view-page .guide-label` 폭을 모두 `64px`로 통일함.
+- `radiolog/SPEC.md`에 `/view`의 `시간`/`구분` 컬럼이 각각 `64px` 고정폭이라는 규칙을 명시함.
+
+### 추가 검증 메모
+- `rg -n "view-page \\.row-label|thead th:first-child|guide-col-head|guide-label|64px|84px|76px" /workspaces/mil/radiolog/view.css`로 `/view` 폭 규칙이 64px로 반영되고 84/76 규칙이 제거됐는지 확인.
+- `rg -n "/view.*시간.*구분.*64px" /workspaces/mil/radiolog/SPEC.md`로 명세 반영 확인.
+
 ## 2026-04-01
 
 ### 추가 작업 요약 (radiolog `/view` 인쇄 시 표 분리 방지)
@@ -959,3 +1020,15 @@
 - `node --check /workspaces/mil/radiolog/view.js` 통과.
 - `rg -n "showNoteGuide|교신자/비고|수신상태\", \"보고자\", \"비고|송수신 감명도\", \"교신자\", \"비고" /workspaces/mil/radiolog/view.js`로 조건부 구분 안내 반영 확인.
 - `rg -n "전체 행의 `비고`가 모두 비어" /workspaces/mil/radiolog/SPEC.md`로 명세 반영 확인.
+
+### 추가 작업 요약 (acs setting 재작성: Toss 스타일 데스크톱 전면 개편 재적용)
+- 이전 변경 취소 상태에서 `acs/setting.html`, `acs/setting.css`, `acs/setting.js`를 다시 작성해 데스크톱 전용 full-page 설정 UI를 재적용함.
+- `setting.html`을 상단 브랜드 헤더 + 좌측 상세/우측 목록 2열 레이아웃으로 교체하고, 확인용 `#stg-confirm-dialog` 및 안내용 `#stg-toast-layer`를 다시 추가함.
+- `setting.css`를 `--stg-*` 디자인 토큰 기반으로 재작성해 배경/패널/버튼/폼/테이블/상태 스타일을 Toss 계열 톤으로 통일하고, `min-width: 1240px` 데스크톱 고정 정책을 유지함.
+- `setting.js`의 메시지 처리(`showMessage`)를 toast 렌더링으로 교체하고, 삭제/serial 재발급 확인 로직을 `requestConfirm(...)` 기반 dialog 흐름으로 재적용함.
+- CRUD/검색/재조회/패널모드 전환 등 기존 기능 로직과 `stg-*` 핵심 DOM ID 계약은 유지함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/acs/setting.js` 통과.
+- `rg -n "stg-confirm-dialog|stg-toast-layer|window\.confirm" /workspaces/mil/acs/setting.html /workspaces/mil/acs/setting.js`로 dialog/toast 연결 및 confirm 대체(폴백 제외) 확인.
+- `rg -n "@media \(max-width" /workspaces/mil/acs/setting.css` 결과 없음으로 모바일 분기 제거 확인.

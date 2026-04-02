@@ -7,16 +7,16 @@
 
 .view-page .row-label,
 .view-page .matrix-table thead th:first-child {
-  width: 84px;
-  min-width: 84px;
-  max-width: 84px;
+  width: 64px;
+  min-width: 64px;
+  max-width: 64px;
 }
 
 .view-page .guide-col-head,
 .view-page .guide-label {
-  width: 76px;
-  min-width: 76px;
-  max-width: 76px;
+  width: 64px;
+  min-width: 64px;
+  max-width: 64px;
 }
 
 .view-page .guide-item {
@@ -33,6 +33,7 @@
   width: 100%;
   max-width: 620px;
   justify-self: end;
+  justify-items: end;
   display: grid;
   gap: 6px;
 }
@@ -40,9 +41,11 @@
 .view-meta-line {
   margin: 0;
   display: grid;
-  grid-template-columns: 110px 1fr;
+  grid-template-columns: auto auto;
+  justify-content: end;
   gap: 8px;
   align-items: center;
+  text-align: right;
   color: var(--text);
   font-size: 0.86rem;
 }
@@ -93,23 +96,13 @@
 
 .view-line {
   display: grid;
-  grid-template-columns: 56px 1fr;
+  grid-template-columns: 1fr;
   align-items: center;
-  gap: 8px;
   min-height: 24px;
 }
 
 .view-line + .view-line {
   border-top: 1px solid #ececec;
-}
-
-.view-key {
-  color: var(--text-muted);
-  font-size: 0.66rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  white-space: nowrap;
 }
 
 .view-value {
