@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Ping Monitor</title>
+  <title>Ping Heatmap</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -11,8 +11,8 @@
     <section class="card">
       <header class="hd">
         <div>
-          <h1>Ping Monitor</h1>
-          <p class="sub">Updates every 10 seconds</p>
+          <h1>Ping Heatmap</h1>
+          <p class="sub">Each host is one cell (5 columns)</p>
         </div>
         <div class="meta">
           <div class="m"><span>Endpoint</span><code id="ep"></code></div>
@@ -30,16 +30,9 @@
         </label>
       </div>
 
-      <div class="tw">
-        <table class="t" aria-label="Ping results">
-          <thead>
-            <tr><th>Destination</th><th>Status</th><th>RTT (ms)</th><th>Succeeded At</th><th>Last Updated</th></tr>
-          </thead>
-          <tbody id="rows">
-            <tr><td colspan="5" class="e">No data yet.</td></tr>
-          </tbody>
-        </table>
-      </div>
+      <section class="heatmap" aria-label="Ping host heatmap">
+        <div id="hm-body" class="hm-body"></div>
+      </section>
     </section>
   </main>
   <script src="script.js"></script>

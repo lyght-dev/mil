@@ -798,3 +798,24 @@
 ### 추가 검증 메모
 - `node --check /workspaces/mil/radiolog/script.js` 통과.
 - `rg -n "data-note-tooltip|note-trigger|visually-hidden|비고작성|16x16" /workspaces/mil/radiolog/script.js /workspaces/mil/radiolog/style.css /workspaces/mil/radiolog/SPEC.md`로 반영 확인.
+
+### 추가 작업 요약 (ping 5×N 히트맵 + 다크 테마 정리)
+- 사용자 요청에 맞춰 `ping/index.html`의 기존 표 기반 UI를 `5×N` 히트맵 레이아웃으로 교체함.
+- `ping/script.js`에 호스트별 최근 상태 이력(`windowSize = 5`)을 메모리로 유지하는 로직을 추가함.
+- `/pings` 응답의 각 레코드를 1개 Cell로 매핑하여 `success`는 초록, 그 외(`timeout`/`error`)는 빨강 계열 Cell로 렌더링하도록 변경함.
+- 이력이 5개 미만인 초기 구간은 빈 Cell(중립색)로 표시해 히스토리 길이를 시각적으로 고정함.
+- `ping/style.css`를 다크 테마 기준으로 재정리하고, 히트맵 Cell(28x28) 중심 시각 구성으로 단순화함.
+
+### 추가 검증 메모
+- `node --check /workspace/mil/ping/script.js` 통과.
+- `rg -n "windowSize|historyByDestination|cell ok|cell bad|5×N|heatmap" /workspace/mil/ping/index.html /workspace/mil/ping/script.js /workspace/mil/ping/style.css`로 반영 확인.
+
+### 추가 작업 요약 (ping 해석 수정: host=1 cell)
+- 사용자 피드백에 맞춰 기존 `최근 5회 이력 cell` 해석을 폐기하고, `host 1개 = heatmap cell 1개`로 UI 의미를 재정의함.
+- `ping/script.js`에서 host별 이력 저장 로직(`windowSize`, `historyByDestination`)을 제거하고, `/pings` 응답의 각 host를 즉시 단일 cell로 렌더링하도록 단순화함.
+- `ping/index.html` 서브타이틀을 `Each host is one cell (5 columns)`로 수정하고, heatmap 본문만 유지하도록 정리함.
+- `ping/style.css`를 5열 고정 그리드 중심으로 수정하고, host 상태(`success`/비성공)에 따라 green/red 배경 cell이 표시되도록 조정함.
+
+### 추가 검증 메모
+- `node --check /workspace/mil/ping/script.js` 통과.
+- `rg -n "Each host is one cell|grid-template-columns: repeat\\(5|article class=\\\"cell|renderHeatmap\\(records\\)" /workspace/mil/ping/index.html /workspace/mil/ping/style.css /workspace/mil/ping/script.js`로 반영 확인.

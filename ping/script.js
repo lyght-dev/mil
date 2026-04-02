@@ -1,10 +1,10 @@
 const elements = {
-  rows: query("#rows"),
   lastFetch: query("#lf"),
   fetchStatus: query("#fs"),
   endpoint: query("#ep"),
   refreshButton: query("#rf"),
-  autoRefreshToggle: query("#ar")
+  autoRefreshToggle: query("#ar"),
+  heatmapBody: query("#hm-body")
 };
 
 const endpoint = new URL("/pings", window.location.href).href;
@@ -16,15 +16,6 @@ function query(selector) {
   return document.querySelector(selector);
 }
 
-function formatDateTime(value) {
-  if (!value) {
-    return "—";
-  }
-
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString();
-}
-
 function escapeHtml(value) {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -34,48 +25,41 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-function getBadgeClass(status) {
-  if (status === "success") {
-    return "s";
+function formatRtt(value) {
+  if (value == null) {
+    return "—";
   }
 
-  if (status === "timeout") {
-    return "t";
-  }
-
-  return "x";
+  return `${escapeHtml(String(value))} ms`;
 }
 
-function renderBadge(status) {
-  const safeStatus = status || "error";
-  return `<span class="b ${getBadgeClass(safeStatus)}">${escapeHtml(safeStatus)}</span>`;
+function isSuccessStatus(status) {
+  return status === "success";
 }
 
-function renderRows(records) {
-  const renderedAt = escapeHtml(new Date().toLocaleString());
-
+function renderHeatmap(records) {
   if (!Array.isArray(records) || records.length === 0) {
-    elements.rows.innerHTML = `<tr><td colspan="5" class="e">No data.</td></tr>`;
+    elements.heatmapBody.innerHTML = '<div class="empty">No data.</div>';
     return;
   }
 
-  elements.rows.innerHTML = records
-    .map((record) => renderRow(record, renderedAt))
+  const cells = records
+    .slice()
+    .sort((a, b) => (a?.destination || "").localeCompare(b?.destination || ""))
+    .map((record) => {
+      const destination = record?.destination || "—";
+      const status = record?.status || "error";
+      const cellClass = isSuccessStatus(status) ? "ok" : "bad";
+
+      return `<article class="cell ${cellClass}" title="${escapeHtml(destination)}: ${escapeHtml(status)}">
+        <div class="host">${escapeHtml(destination)}</div>
+        <div class="status">${escapeHtml(status)}</div>
+        <div class="rtt">${formatRtt(record?.rtt)}</div>
+      </article>`;
+    })
     .join("");
-}
 
-function renderRow(record, renderedAt) {
-  const destination = record?.destination ?? "—";
-  const rtt = record?.rtt == null ? "—" : escapeHtml(String(record.rtt));
-
-  return `
-    <tr>
-      <td class="mono">${escapeHtml(destination)}</td>
-      <td>${renderBadge(record?.status)}</td>
-      <td class="num">${rtt}</td>
-      <td>${escapeHtml(formatDateTime(record?.succeededAt))}</td>
-      <td>${renderedAt}</td>
-    </tr>`;
+  elements.heatmapBody.innerHTML = cells;
 }
 
 function setFetchStatus(text, className) {
@@ -92,7 +76,8 @@ async function fetchAndRender() {
       throw new Error(`HTTP ${response.status}`);
     }
 
-    renderRows(await response.json());
+    renderHeatmap(await response.json());
+
     lastSuccessAt = new Date();
     elements.lastFetch.textContent = lastSuccessAt.toLocaleString();
     setFetchStatus("OK", "ok");
@@ -119,23 +104,17 @@ function stopAutoRefresh() {
   refreshTimer = null;
 }
 
-function handleRefreshClick() {
-  void fetchAndRender();
-}
-
-function handleAutoRefreshChange() {
-  if (elements.autoRefreshToggle.checked) {
-    startAutoRefresh();
-    return;
-  }
-
-  stopAutoRefresh();
-}
-
 function initialize() {
   elements.endpoint.textContent = endpoint;
-  elements.refreshButton.addEventListener("click", handleRefreshClick);
-  elements.autoRefreshToggle.addEventListener("change", handleAutoRefreshChange);
+  elements.refreshButton.addEventListener("click", () => void fetchAndRender());
+  elements.autoRefreshToggle.addEventListener("change", () => {
+    if (elements.autoRefreshToggle.checked) {
+      startAutoRefresh();
+      return;
+    }
+
+    stopAutoRefresh();
+  });
 
   void fetchAndRender();
   startAutoRefresh();
