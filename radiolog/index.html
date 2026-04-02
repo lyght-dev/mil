@@ -3,39 +3,32 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>무선운용일지</title>
+  <title>무선망 운용일지</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <main class="page">
     <header class="report-header" aria-label="메타 정보">
       <div class="title-block">
-        <h1>무선운용일지</h1>
+        <h1>무선망 운용일지</h1>
       </div>
       <div class="meta-controls">
-        <div class="control-row">
-          <label class="field">
-            <span>기준일</span>
-            <input id="date-input" type="date" />
-          </label>
-          <div class="actions">
-            <button id="today-btn" type="button">오늘</button>
-            <button id="reset-btn" type="button">해당일 양식 재생성</button>
-          </div>
-        </div>
-        <section class="author-inline" aria-label="작성자 기록">
-          <p class="inline-label">작성자 기록</p>
-          <div class="author-fields">
-            <label class="author-field">
-              <span>오전</span>
-              <input id="author-am" type="text" />
-            </label>
-            <label class="author-field">
-              <span>오후</span>
-              <input id="author-pm" type="text" />
-            </label>
-          </div>
-        </section>
+        <label class="field">
+          <span>날짜</span>
+          <input id="date-input" type="date" />
+        </label>
+        <label class="field author-field">
+          <span>오전 근무자</span>
+          <input id="author-am" type="text" />
+        </label>
+        <label class="field author-field">
+          <span>오후 근무자</span>
+          <input id="author-pm" type="text" />
+        </label>
+      </div>
+      <div class="actions header-actions">
+        <button id="reset-btn" type="button">초기화</button>
+        <button id="view-btn" type="button">보기 모드</button>
       </div>
     </header>
 

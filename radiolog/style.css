@@ -41,9 +41,7 @@ body {
 
 .report-header {
   display: grid;
-  grid-template-columns: minmax(420px, 1fr) minmax(560px, 620px);
-  align-items: end;
-  gap: 18px;
+  gap: 10px;
   padding: 0 0 14px;
   border-bottom: 1px solid var(--line);
 }
@@ -57,6 +55,11 @@ body {
   text-transform: uppercase;
 }
 
+.title-block {
+  display: flex;
+  justify-content: center;
+}
+
 .title-block h1 {
   margin: 0;
   color: var(--text-strong);
@@ -64,6 +67,7 @@ body {
   font-weight: 800;
   line-height: 1.25;
   letter-spacing: -0.01em;
+  text-align: center;
 }
 
 .doc-note {
@@ -73,18 +77,10 @@ body {
 }
 
 .meta-controls {
-  width: 100%;
-  max-width: 620px;
+  width: 320px;
   justify-self: end;
   display: grid;
   gap: 8px;
-}
-
-.control-row {
-  display: grid;
-  grid-template-columns: 170px 1fr;
-  align-items: end;
-  gap: 10px;
 }
 
 .field {
@@ -93,12 +89,10 @@ body {
 }
 
 .field > span,
-.author-field > span,
 .slot-time-field > span {
   color: var(--text-muted);
   font-size: 0.75rem;
   letter-spacing: 0.03em;
-  text-transform: uppercase;
 }
 
 input[type="date"],
@@ -141,6 +135,10 @@ input[type="date"]:focus,
   margin-top: 0;
 }
 
+.header-actions {
+  justify-self: end;
+}
+
 button {
   height: 34px;
   border: 1px solid var(--line-strong);
@@ -155,35 +153,6 @@ button {
 
 button:hover {
   background: var(--surface-muted);
-}
-
-#today-btn {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: #ffffff;
-}
-
-#today-btn:hover {
-  background: var(--accent-strong);
-}
-
-.author-inline {
-  display: grid;
-  gap: 6px;
-}
-
-.inline-label {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 0.75rem;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-}
-
-.author-fields {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
 }
 
 .author-field {
