@@ -138,6 +138,12 @@
     margin: 8mm;
   }
 
+  .blocks {
+    display: block;
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
   .view-page {
     width: auto;
     max-width: none;
@@ -152,15 +158,25 @@
   }
 
   .print-signature {
-    display: flex;
-    justify-content: flex-end;
+    display: block;
     margin: 0 0 10px;
+  }
+
+  .print-report-title {
+    margin: 0 0 8px;
+    color: var(--text-strong);
+    font-size: 1.6rem;
+    font-weight: 800;
+    line-height: 1.2;
+    letter-spacing: 0.01em;
+    text-align: center;
   }
 
   .print-signature-line {
     margin: 0;
     display: flex;
     align-items: center;
+    justify-content: flex-end;
     gap: 8px;
     color: var(--text-strong);
     font-size: 0.9rem;

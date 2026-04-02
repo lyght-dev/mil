@@ -1032,3 +1032,21 @@
 - `node --check /workspaces/mil/acs/setting.js` 통과.
 - `rg -n "stg-confirm-dialog|stg-toast-layer|window\.confirm" /workspaces/mil/acs/setting.html /workspaces/mil/acs/setting.js`로 dialog/toast 연결 및 confirm 대체(폴백 제외) 확인.
 - `rg -n "@media \(max-width" /workspaces/mil/acs/setting.css` 결과 없음으로 모바일 분기 제거 확인.
+### 추가 작업 요약 (radiolog `/view` 인쇄 상단 제목 추가)
+- 사용자 요청에 따라 `/view` 인쇄 시 서명란 위 중앙에 큰 제목 `무선망 운용일지`를 추가함.
+- `radiolog/view.html`의 인쇄 서명 섹션에 제목 요소(`.print-report-title`)를 추가함.
+- `radiolog/view.css` print 규칙에서 제목을 중앙 정렬/강조 크기로 표시하고, 서명줄은 그 아래 우측 정렬되도록 조정함.
+- `radiolog/SPEC.md` 인쇄 규칙에 "최상단 중앙 제목 `무선망 운용일지` 표시" 기준을 반영함.
+
+### 추가 검증 메모
+- `rg -n "print-report-title|print-signature|@media print|무선망 운용일지" /workspaces/mil/radiolog/view.html /workspaces/mil/radiolog/view.css /workspaces/mil/radiolog/SPEC.md`로 제목/스타일/명세 반영 확인.
+
+### 추가 작업 요약 (radiolog `/view` 인쇄 시 서명란 추가 후 전체 표가 2페이지로 밀리는 문제 수정)
+- 사용자 제보에 따라 `/view` 인쇄에서 `무선반장` 서명란 추가 후 표 블록이 통째로 다음 페이지로 넘어가는 현상을 점검함.
+- 원인은 `/view`의 표 래퍼인 `.blocks`가 `display: grid`인 상태로 인쇄되어, 브라우저 페이지네이션에서 컨테이너를 한 덩어리로 배치하려는 동작이 발생한 점으로 판단함.
+- `radiolog/view.css`의 `@media print`에 `.blocks { display: block; break-inside: auto; page-break-inside: auto; }`를 추가해, 표 래퍼는 페이지 분할 가능하게 두고 개별 표(`.table-shell` 등)의 `break-inside: avoid` 규칙은 그대로 유지함.
+
+### 추가 검증 메모
+- `rg -n "@media print|\\.blocks \\{|break-inside: auto|page-break-inside: auto|break-inside: avoid|print-signature" /workspaces/mil/radiolog/view.css`로 인쇄 분할 규칙 반영 확인.
+- `git diff -- /workspaces/mil/radiolog/view.css`로 변경 범위가 print 전용 `.blocks` 규칙 추가 1건임을 확인.
+
