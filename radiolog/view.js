@@ -9,6 +9,7 @@ const viewElements = {
   divisionPreBody: $("#view-division-pre-body"),
   brigadeCfBody: $("#view-brigade-cf-body"),
   brigadeFBody: $("#view-brigade-f-body"),
+  brigadeCipherBody: $("#view-brigade-cipher-body"),
   brigadePreBody: $("#view-brigade-pre-body")
 };
 
@@ -89,6 +90,38 @@ function renderViewPreCell(row) {
   return `<td class="matrix-cell"><div class="view-cell">${lines.join("")}</div></td>`;
 }
 
+function renderCipherUnits(row) {
+  return row.cipherUnit;
+}
+
+function renderCipherTimeRange(row) {
+  const start = hasDisplayText(row.cipherStartTime) ? row.cipherStartTime : "-";
+  const end = hasDisplayText(row.cipherEndTime) ? row.cipherEndTime : "-";
+  if (start === "-" && end === "-") {
+    return "-";
+  }
+  return `${start} ~ ${end}`;
+}
+
+function renderViewCipherCell(row) {
+  if (!row) {
+    return '<td class="matrix-cell"><div class="view-cell">-</div></td>';
+  }
+
+  const lines = [
+    renderLine(renderCipherUnits(row)),
+    renderLine(renderCounterparty(row)),
+    renderLine(row.cipherWordCount),
+    renderLine(renderCipherTimeRange(row))
+  ];
+
+  if (hasDisplayText(row.note)) {
+    lines.push(renderLine(row.note));
+  }
+
+  return `<td class="matrix-cell"><div class="view-cell">${lines.join("")}</div></td>`;
+}
+
 function renderDivisionViewRows(lookup, showNoteGuide) {
   viewElements.divisionBody.innerHTML = DIVISION_SLOTS.map((slotLabel) => {
     const guideCell = renderGuideCell([
@@ -154,6 +187,22 @@ function renderBrigadeViewRows(lookup, network, slots, bodyElement, showNoteGuid
   }).join("");
 }
 
+function renderBrigadeCipherViewRows(lookup, showNoteGuide) {
+  const guideLabels = showNoteGuide
+    ? ["대대", "근무자", "어수", "시작~종료", "비고"]
+    : ["대대", "근무자", "어수", "시작~종료"];
+  const cells = BRIGADE_CIPHER_SLOTS.map((slotLabel) => {
+    const row = findRow(lookup, CIPHER_LINK_TYPE, BRIGADE_CIPHER_NETWORK, slotLabel, "여단");
+    return renderViewCipherCell(row);
+  }).join("");
+
+  viewElements.brigadeCipherBody.innerHTML = `<tr>
+    <th class="row-label" scope="row">음어</th>
+    ${renderGuideCell(guideLabels)}
+    ${cells}
+  </tr>`;
+}
+
 function renderBrigadePreViewRows(lookup, showNoteGuide) {
   const guideCell = renderGuideCell(
     showNoteGuide ? ["수신상태", "근무자", "비고"] : ["수신상태", "근무자"]
@@ -180,6 +229,7 @@ function renderViewTables(rows) {
   renderDivisionPreViewRows(lookup, showNoteGuide);
   renderBrigadeViewRows(lookup, "CF", BRIGADE_CF_SLOTS, viewElements.brigadeCfBody, showNoteGuide);
   renderBrigadeViewRows(lookup, "F", BRIGADE_F_SLOTS, viewElements.brigadeFBody, showNoteGuide);
+  renderBrigadeCipherViewRows(lookup, showNoteGuide);
   renderBrigadePreViewRows(lookup, showNoteGuide);
 }
 
@@ -216,6 +266,7 @@ function initializeView() {
     !viewElements.divisionPreBody ||
     !viewElements.brigadeCfBody ||
     !viewElements.brigadeFBody ||
+    !viewElements.brigadeCipherBody ||
     !viewElements.brigadePreBody
   ) {
     return;

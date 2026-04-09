@@ -11,9 +11,12 @@ const DIVISION_NETWORKS = ["작전망", "행정군수망"];
 const DIVISION_SLOTS = ["오전", "오후"];
 const PRE_SLOTS = ["08:00", "10:00", "12:00", "14:00", "16:00"];
 const PRE_LINK_TYPE = "PRE";
+const CIPHER_LINK_TYPE = "음어교신";
 const DIVISION_PRE_NETWORK = "PRE(행정군수망)";
 const BRIGADE_PRE_NETWORK = "PRE(위치취합보고)";
+const BRIGADE_CIPHER_NETWORK = "음어 교신";
 const BRIGADE_UNITS = ["0FA", "1FA", "2FA", "3FA", "4FA"];
+const BRIGADE_CIPHER_SLOTS = ["1", "2"];
 const BRIGADE_CF_SLOTS = [
   { slotKey: "08:00", label: "08:00", isManualTime: false },
   { slotKey: "10:00", label: "10:00", isManualTime: false },
@@ -38,6 +41,7 @@ const elements = {
   divisionPreBody: $("#division-pre-body"),
   brigadeCfBody: $("#brigade-cf-body"),
   brigadeFBody: $("#brigade-f-body"),
+  brigadeCipherBody: $("#brigade-cipher-body"),
   brigadePreBody: $("#brigade-pre-body"),
   notePopover: $("#note-popover"),
   noteTextarea: $("#note-textarea"),
@@ -94,6 +98,11 @@ function buildTemplateRows(dateString) {
     });
   });
 
+  BRIGADE_CIPHER_SLOTS.forEach((slotLabel) => {
+    rows.push(createTemplateRow(dateString, sequence, CIPHER_LINK_TYPE, BRIGADE_CIPHER_NETWORK, slotLabel, "여단"));
+    sequence += 1;
+  });
+
   PRE_SLOTS.forEach((slotLabel) => {
     BRIGADE_UNITS.forEach((unit) => {
       rows.push(
@@ -127,6 +136,10 @@ function createTemplateRow(dateString, sequence, linkType, network, slotLabel, t
     preReporter: "",
     note: "",
     recordedTime: "",
+    cipherUnit: "",
+    cipherWordCount: "",
+    cipherStartTime: "",
+    cipherEndTime: "",
     isNoContact: false,
     noContactReason: "",
     updatedAt: ""
@@ -184,8 +197,14 @@ function normalizeRows(dateString, storedRows) {
       preReporter: typeof stored.preReporter === "string" ? stored.preReporter : "",
       note: typeof stored.note === "string" ? stored.note : "",
       recordedTime: typeof stored.recordedTime === "string" ? stored.recordedTime : "",
+      cipherUnit: normalizeOptionValue(stored.cipherUnit, ["", ...BRIGADE_UNITS]),
+      cipherWordCount: typeof stored.cipherWordCount === "string" ? stored.cipherWordCount : "",
+      cipherStartTime: typeof stored.cipherStartTime === "string" ? stored.cipherStartTime : "",
+      cipherEndTime: typeof stored.cipherEndTime === "string" ? stored.cipherEndTime : "",
       isNoContact:
-        !isPreRow(row) && typeof stored.isNoContact === "boolean" ? stored.isNoContact : false,
+        !isPreRow(row) && !isCipherRow(row) && typeof stored.isNoContact === "boolean"
+          ? stored.isNoContact
+          : false,
       noContactReason: normalizedNoContactReason,
       updatedAt: typeof stored.updatedAt === "string" ? stored.updatedAt : ""
     };
@@ -236,6 +255,18 @@ function saveAuthorFields() {
 }
 
 function isRowComplete(row) {
+  if (isCipherRow(row)) {
+    return Boolean(
+      row.cipherUnit &&
+        row.counterpartyRank &&
+        row.counterpartyName &&
+        row.counterpartyName.trim() &&
+        row.cipherWordCount &&
+        row.cipherStartTime &&
+        row.cipherEndTime
+    );
+  }
+
   if (isPreRow(row)) {
     if (!row.preReceiveStatus) {
       return false;
@@ -371,7 +402,93 @@ function renderNoContactCell(row) {
   </td>`;
 }
 
+function renderCipherCell(row) {
+  if (!row) {
+    return '<td class="matrix-cell"><div class="cell-editor missing">-</div></td>';
+  }
+
+  const complete = isRowComplete(row);
+  const stateClass = complete ? "complete" : "pending";
+
+  return `<td class="matrix-cell">
+    <div class="cell-editor ${stateClass}" data-row-cell="${escapeHtml(row.id)}">
+      ${renderNoteTrigger(row)}
+      <div class="editor-grid">
+        <div class="editor-row">
+          <div class="editor-controls">
+            <select
+              class="editor-control"
+              aria-label="음어 교신 대상 대대"
+              data-id="${escapeHtml(row.id)}"
+              data-field="cipherUnit"
+            >
+              ${renderSelectOptions(["", ...BRIGADE_UNITS], row.cipherUnit)}
+            </select>
+          </div>
+        </div>
+        <div class="editor-row">
+          <div class="editor-controls two-col">
+            <select
+              class="editor-control"
+              aria-label="상대 근무자 계급"
+              data-id="${escapeHtml(row.id)}"
+              data-field="counterpartyRank"
+            >
+              ${renderSelectOptions(RANK_OPTIONS, row.counterpartyRank)}
+            </select>
+            <input
+              class="editor-control"
+              aria-label="상대 근무자 성명"
+              data-id="${escapeHtml(row.id)}"
+              data-field="counterpartyName"
+              type="text"
+              value="${escapeHtml(row.counterpartyName)}"
+            />
+          </div>
+        </div>
+        <div class="editor-row">
+          <div class="editor-controls">
+            <input
+              class="editor-control"
+              aria-label="교신한 어수"
+              data-id="${escapeHtml(row.id)}"
+              data-field="cipherWordCount"
+              type="number"
+              min="0"
+              value="${escapeHtml(row.cipherWordCount)}"
+            />
+          </div>
+        </div>
+        <div class="editor-row">
+          <div class="editor-controls two-col">
+            <input
+              class="editor-control"
+              aria-label="교신 시작 시각"
+              data-id="${escapeHtml(row.id)}"
+              data-field="cipherStartTime"
+              type="time"
+              value="${escapeHtml(row.cipherStartTime)}"
+            />
+            <input
+              class="editor-control"
+              aria-label="교신 종료 시각"
+              data-id="${escapeHtml(row.id)}"
+              data-field="cipherEndTime"
+              type="time"
+              value="${escapeHtml(row.cipherEndTime)}"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  </td>`;
+}
+
 function renderEditorCell(row) {
+  if (row && isCipherRow(row)) {
+    return renderCipherCell(row);
+  }
+
   if (row && isPreRow(row)) {
     return renderPreCell(row);
   }
@@ -514,6 +631,20 @@ function renderBrigadeRows(lookup, network, slots, bodyElement) {
     .join("");
 }
 
+function renderBrigadeCipherRows(lookup) {
+  const guideCell = renderGuideCell(["대대", "근무자", "어수", "시작~종료"]);
+  const cells = BRIGADE_CIPHER_SLOTS.map((slotLabel) => {
+    const row = findRow(lookup, CIPHER_LINK_TYPE, BRIGADE_CIPHER_NETWORK, slotLabel, "여단");
+    return renderCipherCell(row);
+  }).join("");
+
+  elements.brigadeCipherBody.innerHTML = `<tr>
+    <th class="row-label" scope="row">음어</th>
+    ${guideCell}
+    ${cells}
+  </tr>`;
+}
+
 function renderBrigadePreRows(lookup) {
   const guideCell = renderGuideCell(["수신상태", "근무자"]);
   elements.brigadePreBody.innerHTML = PRE_SLOTS
@@ -536,6 +667,7 @@ function renderTables() {
   renderDivisionPreRows(lookup);
   renderBrigadeRows(lookup, "CF", BRIGADE_CF_SLOTS, elements.brigadeCfBody);
   renderBrigadeRows(lookup, "F", BRIGADE_F_SLOTS, elements.brigadeFBody);
+  renderBrigadeCipherRows(lookup);
   renderBrigadePreRows(lookup);
 }
 
@@ -1044,6 +1176,7 @@ if (
   elements.divisionPreBody &&
   elements.brigadeCfBody &&
   elements.brigadeFBody &&
+  elements.brigadeCipherBody &&
   elements.brigadePreBody &&
   elements.notePopover &&
   elements.noteTextarea &&

@@ -94,8 +94,12 @@ function isPreRow(row) {
   return row.linkType === PRE_LINK_TYPE;
 }
 
+function isCipherRow(row) {
+  return row.linkType === CIPHER_LINK_TYPE;
+}
+
 function isGeneralContactRow(row) {
-  return Boolean(row) && !isPreRow(row);
+  return Boolean(row) && !isPreRow(row) && !isCipherRow(row);
 }
 
 function isNoContactEnabled(row) {

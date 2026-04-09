@@ -2,6 +2,54 @@
 
 ## 2026-04-09
 
+### 추가 작업 요약 (`bb` milkit 정적 서버 추가)
+- 사용자 요청에 따라 `bb/server.ps1`를 신규 추가하고 `radiolog/server.ps1`와 같은 `milkit.psm1` 기반 정적 서버 패턴으로 맞춤.
+- `bb/server.ps1`는 `../milkit/milkit.psm1`를 import하고, `Use-Static $app "/" "./"`로 `bb/` 정적 파일을 서빙함.
+- 기본 문서는 `index.html`로 고정했고, 최소 상태 확인용 `GET /health`만 추가함.
+- `bb/SPEC.md`에 런타임 서버와 정적 라우트 계약을 반영함.
+
+### 추가 검증 메모
+- `pwsh -NoLogo -NoProfile -Command "[void][scriptblock]::Create((Get-Content -LiteralPath '/workspaces/mil/bb/server.ps1' -Raw)); 'PARSE_OK'"` 결과 `PARSE_OK` 확인.
+
+### 추가 작업 요약 (`bb` 숫자야구 MVP 추가)
+- 사용자 요청에 따라 `bb/`에 사람 vs 컴퓨터 숫자야구 정적 클라이언트 MVP를 신규 구현함.
+- `bb/index.html`에 인트로 화면과 게임 화면을 추가함.
+  - 인트로: 난이도 `1/2/3` 선택, 내 숫자 4개 입력
+  - 게임: 좌측 상단 컴퓨터 숨김 숫자 4칸(`?`), 중앙 로그/턴 상태, 우측 하단 내 숫자 4칸, 플레이어 입력 폼, 재시작 버튼
+- `bb/style.css`에 카드형 레이아웃, 회색 숨김 슬롯/흰색 공개 슬롯, 중앙 로그, 모바일 단일 컬럼 반응형 스타일을 추가함.
+- `bb/script.js`에 게임 상태와 턴 흐름을 구현함.
+  - 숫자 규칙은 `0-9`, 4자리, 중복 없음으로 고정
+  - 컴퓨터/플레이어 비밀번호는 모두 같은 규칙을 사용
+  - 플레이어 추측 후 `S/B` 결과를 로그에 적재
+  - 컴퓨터는 난이도별 지연만 다르게 두고, 추측 자체는 매번 중복 없는 4자리 랜덤으로 생성
+  - 누군가 `4S`를 만들어도 즉시 종료하지 않고 해당 라운드의 컴퓨터 차례 1회를 끝낸 뒤 승패를 확정
+  - 라운드 결과는 `플레이어 승`, `컴퓨터 승`, `무승부` 3가지로 처리
+- `bb/SPEC.md`를 신규 추가해 현재 MVP 범위와 고정 규칙을 문서화함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/bb/script.js` 통과.
+- `rg -n "난이도|컴퓨터 마지막 차례|무승부|0-9|중복 없음" /workspaces/mil/bb/index.html /workspaces/mil/bb/script.js /workspaces/mil/bb/SPEC.md`로 핵심 규칙 반영 위치 확인.
+
+### 추가 작업 요약 (radiolog 여단 음어 교신 2행 추가)
+- 사용자 요청에 따라 `radiolog` 여단망에 `음어 교신` 별도 표를 추가함.
+- `radiolog/index.html`, `radiolog/view.html`에 `F` 아래, `PRE(위치취합보고)` 위로 `음어 교신` 섹션과 전용 tbody를 추가함.
+- `radiolog/script.js`에 `음어교신` row type을 추가하고 날짜별 템플릿에 고정 2행을 생성하도록 확장함.
+- 이후 사용자 정정에 따라 음어 교신은 `여단-대대` 1:1 교신으로 재해석해 `cipherUnit` 단일 필드만 사용하도록 정리함.
+- `radiolog/script.js`에서 음어 교신 입력 필드(`cipherUnit`, `cipherWordCount`, `cipherStartTime`, `cipherEndTime`) 저장과 전용 입력 셀 렌더를 추가함.
+- 음어 교신 행의 완료 판정은 `대상 대대`, `상대 근무자 관등/성명`, `어수`, `시작`, `종료`가 모두 있을 때만 완료로 처리함.
+- 음어 교신 행은 일반 교신으로 취급하지 않도록 정리해 우클릭 `미교신` 컨텍스트 메뉴 대상에서 제외함.
+- `radiolog/view.js`에 음어 교신 전용 읽기 셀 렌더를 추가해 `/view`에서도 `대상 대대`, `근무자`, `어수`, `시작~종료` 순으로 표시하도록 구현함.
+- `radiolog/SPEC.md`에 여단 `음어 교신` 대상, 고정 2행 템플릿, 저장 필드, 완료 판정, `/view` 표시 규칙과 총 행 수 `71`을 반영함.
+- 이후 사용자 요청에 따라 `음어 교신` 2건의 화면 배치를 위아래 2행이 아닌 좌우 2칸으로 정리함.
+- `radiolog/index.html`, `radiolog/view.html`의 음어 교신 표 헤더를 `건 / 구분 / 1 / 2` 구조로 변경함.
+- `radiolog/script.js`, `radiolog/view.js`의 음어 교신 렌더를 단일 `<tr>`에서 좌우 2셀을 나란히 렌더하는 방식으로 변경함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/radiolog/utils.js` 통과.
+- `node --check /workspaces/mil/radiolog/script.js` 통과.
+- `node --check /workspaces/mil/radiolog/view.js` 통과.
+- `rg -n "음어 교신|brigade-cipher|cipherUnit|cipherWordCount|cipherStartTime|CIPHER_LINK_TYPE|71행|71건" /workspaces/mil/radiolog/index.html /workspaces/mil/radiolog/view.html /workspaces/mil/radiolog/script.js /workspaces/mil/radiolog/view.js /workspaces/mil/radiolog/SPEC.md`로 반영 위치 확인.
+
 ### 추가 작업 요약 (radiolog DOM 타입 가드 유틸 추가)
 - 사용자 요청에 따라 `radiolog/utils.js`에 DOM 타입 검사 유틸 `isElement`, `isHtmlElement`, `isHtmlButton`, `isHtmlInput`, `isHtmlSelect`를 추가함.
 - `radiolog/script.js`의 `instanceof HTMLButtonElement`/`Element`/`HTMLElement`/`HTMLInputElement`/`HTMLSelectElement` 분기를 공용 유틸 호출로 치환함.
