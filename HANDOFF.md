@@ -2,6 +2,16 @@
 
 ## 2026-04-09
 
+### 추가 작업 요약 (radiolog DOM 타입 가드 유틸 추가)
+- 사용자 요청에 따라 `radiolog/utils.js`에 DOM 타입 검사 유틸 `isElement`, `isHtmlElement`, `isHtmlButton`, `isHtmlInput`, `isHtmlSelect`를 추가함.
+- `radiolog/script.js`의 `instanceof HTMLButtonElement`/`Element`/`HTMLElement`/`HTMLInputElement`/`HTMLSelectElement` 분기를 공용 유틸 호출로 치환함.
+- 동작 변경 없이 이벤트 대상과 DOM 참조의 타입 가드 표현만 `utils.js` 중심으로 정리함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/radiolog/utils.js` 통과.
+- `node --check /workspaces/mil/radiolog/script.js` 통과.
+- `rg -n "instanceof (Element|HTMLElement|HTMLButtonElement|HTMLInputElement|HTMLSelectElement)|isHtmlButton|isHtmlInput|isHtmlSelect|isHtmlElement|isElement" /workspaces/mil/radiolog/script.js /workspaces/mil/radiolog/utils.js`로 치환 반영 확인.
+
 ### 추가 작업 요약 (radiolog server 정리 + utils 분리)
 - 사용자 요청에 따라 `radiolog/eg.ps1`를 제거하고 `radiolog/server.ps1`를 `Use-Static` 기반 정적 서빙 구조로 단순화함.
 - `radiolog/server.ps1`는 정적 파일 서빙을 `Use-Static $app "/" "./"`에 맡기고, 기존 계약 유지를 위해 `GET /health`, `GET /view`만 명시 라우트로 유지함.

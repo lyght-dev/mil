@@ -8,6 +8,26 @@ function $$(selector, root) {
   return Array.from(scope.querySelectorAll(selector));
 }
 
+function isElement(value) {
+  return value instanceof Element;
+}
+
+function isHtmlElement(value) {
+  return value instanceof HTMLElement;
+}
+
+function isHtmlButton(value) {
+  return value instanceof HTMLButtonElement;
+}
+
+function isHtmlInput(value) {
+  return value instanceof HTMLInputElement;
+}
+
+function isHtmlSelect(value) {
+  return value instanceof HTMLSelectElement;
+}
+
 function formatDate(date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");

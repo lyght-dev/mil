@@ -544,7 +544,7 @@ function getRowById(rowId) {
 }
 
 function setContextActionLabel(row) {
-  if (!(elements.cellNoContactAction instanceof HTMLButtonElement)) {
+  if (!isHtmlButton(elements.cellNoContactAction)) {
     return;
   }
   elements.cellNoContactAction.textContent = isNoContactEnabled(row) ? "교신으로 전환" : "미교신 설정";
@@ -616,11 +616,11 @@ function toggleNoContact(row) {
 }
 
 function findContextTargetRow(target) {
-  if (!(target instanceof Element)) {
+  if (!isElement(target)) {
     return null;
   }
   const cell = target.closest("[data-row-cell]");
-  if (!cell || !(cell instanceof HTMLElement)) {
+  if (!cell || !isHtmlElement(cell)) {
     return null;
   }
   const rowId = cell.dataset.rowCell;
@@ -637,7 +637,7 @@ function findContextTargetRow(target) {
 function findNoteTriggerButton(rowId) {
   const triggers = $$("[data-note-trigger]");
   for (const trigger of triggers) {
-    if (!(trigger instanceof HTMLButtonElement)) {
+    if (!isHtmlButton(trigger)) {
       continue;
     }
     if (trigger.dataset.noteTrigger === rowId) {
@@ -661,7 +661,7 @@ function setActiveNoteTrigger(trigger) {
 }
 
 function clearActiveNoteTrigger() {
-  if (!(state.activeNoteAnchor instanceof HTMLButtonElement)) {
+  if (!isHtmlButton(state.activeNoteAnchor)) {
     return;
   }
   state.activeNoteAnchor.classList.remove("active");
@@ -669,7 +669,7 @@ function clearActiveNoteTrigger() {
 }
 
 function positionNotePopover() {
-  if (!elements.notePopover || !(state.activeNoteAnchor instanceof HTMLButtonElement)) {
+  if (!elements.notePopover || !isHtmlButton(state.activeNoteAnchor)) {
     return;
   }
 
@@ -858,7 +858,7 @@ function updateBrigadeSlotTime(target) {
 }
 
 function handleAuthorInput(event) {
-  if (!(event.target instanceof HTMLInputElement)) {
+  if (!isHtmlInput(event.target)) {
     return;
   }
 
@@ -871,12 +871,12 @@ function handleAuthorInput(event) {
 
 function handleRowsClick(event) {
   const target = event.target;
-  if (!(target instanceof Element)) {
+  if (!isElement(target)) {
     return;
   }
 
   const trigger = target.closest("[data-note-trigger]");
-  if (!(trigger instanceof HTMLButtonElement)) {
+  if (!isHtmlButton(trigger)) {
     return;
   }
 
@@ -904,11 +904,11 @@ function handleRowsContextMenu(event) {
 
 function handleRowsInput(event) {
   const target = event.target;
-  if (!(target instanceof HTMLInputElement) && !(target instanceof HTMLSelectElement)) {
+  if (!isHtmlInput(target) && !isHtmlSelect(target)) {
     return;
   }
 
-  if (target instanceof HTMLInputElement && target.dataset.timeScope === "brigade-slot") {
+  if (isHtmlInput(target) && target.dataset.timeScope === "brigade-slot") {
     updateBrigadeSlotTime(target);
     return;
   }
@@ -921,7 +921,7 @@ function handleRowsInput(event) {
 
 function handleDocumentMouseDown(event) {
   const target = event.target;
-  if (!(target instanceof Element)) {
+  if (!isElement(target)) {
     closeCellContextMenu();
     closeNotePopover(true);
     return;
