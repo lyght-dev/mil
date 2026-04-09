@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>숫자야구</title>
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<main class="app">
+    <section id="introScreen" class="panel intro-screen">
+        <div class="panel-head">
+            <p class="eyebrow">BB</p>
+            <h1>숫자야구</h1>
+            <p class="intro-copy">난이도를 고르고 내 숫자 4개를 정하면 컴퓨터와 번갈아 추측한다.</p>
+        </div>
+
+        <form id="setupForm" class="setup-form">
+            <fieldset class="difficulty-box">
+                <legend>난이도</legend>
+                <label class="difficulty-option">
+                    <input type="radio" name="difficulty" value="1" checked>
+                    <span>1</span>
+                </label>
+                <label class="difficulty-option">
+                    <input type="radio" name="difficulty" value="2">
+                    <span>2</span>
+                </label>
+                <label class="difficulty-option">
+                    <input type="radio" name="difficulty" value="3">
+                    <span>3</span>
+                </label>
+            </fieldset>
+
+            <label class="field-label" for="playerSecretInput">내 숫자 4개</label>
+            <input id="playerSecretInput" name="playerSecret" class="digit-input" type="text" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="예: 1234">
+
+            <p id="setupMessage" class="message" aria-live="polite"></p>
+
+            <button class="primary-btn" type="submit">시작</button>
+        </form>
+    </section>
+
+    <section id="gameScreen" class="game-screen" hidden>
+        <header class="panel top-bar">
+            <div>
+                <p class="eyebrow">TURN</p>
+                <h2 id="statusText">내 차례</h2>
+            </div>
+            <div class="status-meta">
+                <p id="difficultyText">난이도: 1</p>
+                <p id="resultText">진행 중</p>
+            </div>
+        </header>
+
+        <section class="board-layout">
+            <div class="secret-panel computer-panel">
+                <p class="panel-title">컴퓨터 숫자</p>
+                <div id="computerSecretSlots" class="slot-row"></div>
+            </div>
+
+            <section class="panel log-panel">
+                <div class="log-head">
+                    <p class="panel-title">로그</p>
+                    <div class="log-head-actions">
+                        <label class="toggle-chip" for="computerLogToggle">
+                            <input id="computerLogToggle" type="checkbox" checked>
+                            <span>컴퓨터 로그</span>
+                        </label>
+                        <p id="turnText" class="turn-chip">내 차례</p>
+                    </div>
+                </div>
+                <div id="thinkingNotice" class="thinking-notice" hidden>
+                    <strong>컴퓨터 생각중</strong>
+                    <span>이전 결과를 정리하고 다음 숫자를 고르는 중이다.</span>
+                </div>
+                <div id="eventLogBox" class="event-log-box" aria-live="polite"></div>
+                <div class="log-columns">
+                    <section class="log-lane">
+                        <p class="panel-title">내 로그</p>
+                        <div id="playerLogBox" class="log-box" aria-live="polite"></div>
+                    </section>
+                    <section class="log-lane">
+                        <p class="panel-title">컴퓨터 로그</p>
+                        <div id="computerLogBox" class="log-box" aria-live="polite"></div>
+                    </section>
+                </div>
+
+                <form id="guessForm" class="guess-form">
+                    <label class="field-label" for="guessInput">숫자 4개 입력</label>
+                    <div class="guess-controls">
+                        <input id="guessInput" class="digit-input" type="text" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="예: 5678">
+                        <button id="guessButton" class="primary-btn" type="submit">입력</button>
+                    </div>
+                    <p id="guessMessage" class="message" aria-live="polite"></p>
+                </form>
+
+                <button id="restartButton" class="secondary-btn" type="button" hidden>다시 시작</button>
+            </section>
+
+            <div class="secret-panel player-panel">
+                <p class="panel-title">내 숫자</p>
+                <div id="playerSecretSlots" class="slot-row"></div>
+            </div>
+        </section>
+    </section>
+</main>
+
+<script src="./script.js"></script>
+</body>
+</html>

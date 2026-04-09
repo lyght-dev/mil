@@ -2,6 +2,19 @@
 
 ## 2026-04-09
 
+### 추가 작업 요약 (`bb` 사용자/컴퓨터 로그 영역 분리)
+- `bb/index.html`의 중앙 로그 영역을 공용 단일 박스에서 `이벤트 로그 + 좌우 2분할 추측 로그` 구조로 변경함.
+- 사용자 추측 카드는 좌측 `내 로그`, 컴퓨터 추측 카드는 우측 `컴퓨터 로그`에 각각 누적되도록 정리함.
+- 시작/상태/종료 같은 텍스트 로그는 별도 전체폭 `eventLogBox`에 유지해 추측 카드와 분리함.
+- `bb/script.js`의 로그 렌더를 `buildGuessLogRow`, `buildTextLogRow` 기반으로 분리하고, 카드 종류에 따라 각 박스로 라우팅하도록 변경함.
+- `컴퓨터 로그` 토글은 우측 컬럼 전체를 숨기는 방식으로 유지함.
+- `bb/style.css`에 `log-columns`, `log-lane`, `event-log-box` 레이아웃을 추가하고 모바일에서는 다시 단일 컬럼으로 접히도록 정리함.
+- `bb/SPEC.md`에 좌우 분리 로그 규칙을 반영함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/bb/script.js` 통과.
+- `rg -n "eventLogBox|playerLogBox|computerLogBox|log-columns|log-lane" /workspaces/mil/bb/index.html /workspaces/mil/bb/script.js /workspaces/mil/bb/style.css /workspaces/mil/bb/SPEC.md`로 반영 위치 확인.
+
 ### 추가 작업 요약 (`bb` 컴퓨터 생각중 fallback UI 추가)
 - `bb/index.html` 로그 패널 상단에 `thinkingNotice` 안내 카드를 추가함.
 - `bb/script.js`에서 `waitingComputer` 상태와 연동해 컴퓨터 차례 대기 중일 때만 해당 카드를 표시하도록 연결함.
