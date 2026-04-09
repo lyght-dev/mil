@@ -2,6 +2,9 @@ const viewElements = {
   dateValue: $("#view-date-value"),
   authorAm: $("#view-author-am"),
   authorPm: $("#view-author-pm"),
+  printDateValue: $("#print-view-date-value"),
+  printAuthorAm: $("#print-view-author-am"),
+  printAuthorPm: $("#print-view-author-pm"),
   emptyPanel: $("#view-empty"),
   emptyDetail: $("#view-empty-detail"),
   journalBlocks: $("#view-journal-blocks"),
@@ -238,6 +241,15 @@ function setViewMeta(dateString) {
   viewElements.dateValue.textContent = dateString;
   viewElements.authorAm.textContent = displayText(author.am);
   viewElements.authorPm.textContent = displayText(author.pm);
+  if (viewElements.printDateValue) {
+    viewElements.printDateValue.textContent = dateString;
+  }
+  if (viewElements.printAuthorAm) {
+    viewElements.printAuthorAm.textContent = displayText(author.am);
+  }
+  if (viewElements.printAuthorPm) {
+    viewElements.printAuthorPm.textContent = displayText(author.pm);
+  }
 }
 
 function showNoData(dateString) {

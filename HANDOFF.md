@@ -2,6 +2,55 @@
 
 ## 2026-04-09
 
+### 추가 작업 요약 (`bb` 컴퓨터 생각중 fallback UI 추가)
+- `bb/index.html` 로그 패널 상단에 `thinkingNotice` 안내 카드를 추가함.
+- `bb/script.js`에서 `waitingComputer` 상태와 연동해 컴퓨터 차례 대기 중일 때만 해당 카드를 표시하도록 연결함.
+- `bb/style.css`에 생각중 안내 카드의 강조 배경과 텍스트 스타일을 추가함.
+- `bb/SPEC.md`에 컴퓨터 턴 지연 중 fallback 안내가 보인다는 규칙을 반영함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/bb/script.js` 통과.
+- `rg -n "thinkingNotice|thinking-notice|waitingComputer" /workspaces/mil/bb/index.html /workspaces/mil/bb/script.js /workspaces/mil/bb/style.css /workspaces/mil/bb/SPEC.md`로 반영 위치 확인.
+
+### 추가 작업 요약 (radiolog `/view` 인쇄 메타를 서명란 아래로 이동)
+- 사용자 요청에 따라 `/view` 인쇄 시 `기준일`, `작성자 오전`, `작성자 오후`가 `무선반장` 서명란 아래에 그대로 출력되도록 조정함.
+- `radiolog/view.html`의 인쇄 서명 블록 아래에 print 전용 메타 영역을 추가함.
+- `radiolog/view.js`에서 기존 화면 메타와 함께 print 전용 메타 값도 같이 채우도록 수정함.
+- `radiolog/view.css`에서 기존 화면 메타(`.view-header`)는 print에서 계속 숨기고, 새 `.print-meta`만 print에서 표시되도록 스타일을 추가함.
+- `radiolog/SPEC.md`의 `/view` 인쇄 규칙을 현재 동작에 맞게 갱신함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/radiolog/view.js` 통과.
+- `rg -n "print-meta|print-view-date-value|print-view-author-am|print-view-author-pm|서명란 아래" /workspaces/mil/radiolog/view.html /workspaces/mil/radiolog/view.css /workspaces/mil/radiolog/view.js /workspaces/mil/radiolog/SPEC.md`로 반영 위치 확인.
+
+### 추가 작업 요약 (`bb` 난이도별 컴퓨터 추리 로직 분리)
+- `bb/script.js`의 컴퓨터 추리를 난이도별로 분리함.
+- `1단계`는 기존과 동일하게 중복 없는 4자리 완전 랜덤 추측을 유지함.
+- `2단계`는 이전 피드백 기준으로 남은 후보군만 유지하고, 그 후보군 안에서 랜덤 추측하도록 변경함.
+- `3단계`는 전체 5040 후보와 피드백 테이블을 사용하고, 샘플링 기반 minimax 근사 방식으로 다음 수를 고르도록 구현함.
+- `computerAi` 상태를 추가해 후보 인덱스와 마지막 추측 인덱스를 관리하도록 정리함.
+- 게임 시작 시 후보군을 초기화하고, 컴퓨터가 한 번 추측할 때마다 해당 피드백으로 후보군을 갱신하도록 연결함.
+- `bb/SPEC.md`에 난이도별 알고리즘 규칙을 반영함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/bb/script.js` 통과.
+- `rg -n "LEVEL3_SAMPLE_SIZE|initializeComputerAi|pickKnuthGuess|candidateIndices|fully random|Knuth-style" /workspaces/mil/bb/script.js /workspaces/mil/bb/SPEC.md /workspaces/mil/HANDOFF.md`로 반영 위치 확인.
+
+### 추가 작업 요약 (`bb` 컴퓨터 로그 토글 + 메모 카드)
+- `bb/index.html` 로그 헤더에 `컴퓨터 로그` 토글을 추가하고 기본값을 `켜짐`으로 설정함.
+- `bb/script.js`에 `showComputerLogs` 상태를 추가해 컴퓨터 추측 로그 카드만 표시/숨김 처리하도록 변경함.
+- 플레이어 추측 로그, 시작/상태/종료 텍스트 로그는 토글과 무관하게 계속 표시되도록 유지함.
+- 좌측 상단 `컴퓨터 숫자` 4칸을 클릭 가능한 메모 카드로 변경함.
+- 각 칸은 눌러서 `0-9` 한 자리 메모를 입력할 수 있고, 메모가 있으면 `?` 대신 그 숫자를 크게 표시함.
+- 메모 상태는 `computerMemoDigits`로 별도 보관하며 실제 `computerSecret`과 분리되어 추측 결과, 승패 판정에는 영향을 주지 않음.
+- 재시작 시 컴퓨터 로그 토글은 다시 `켜짐`, 메모 카드는 전부 초기화되도록 정리함.
+- `bb/style.css`에 토글 칩, 메모 카드 hover/focus/editing 상태, 카드 내부 숫자 입력 스타일을 추가함.
+- `bb/SPEC.md`에 컴퓨터 로그 토글과 메모 카드 규칙을 반영함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/bb/script.js` 통과.
+- `rg -n "computerLogToggle|showComputerLogs|computerMemoDigits|slot-input|memo-filled" /workspaces/mil/bb/index.html /workspaces/mil/bb/script.js /workspaces/mil/bb/style.css /workspaces/mil/bb/SPEC.md`로 반영 위치 확인.
+
 ### 추가 작업 요약 (`bb` milkit 정적 서버 추가)
 - 사용자 요청에 따라 `bb/server.ps1`를 신규 추가하고 `radiolog/server.ps1`와 같은 `milkit.psm1` 기반 정적 서버 패턴으로 맞춤.
 - `bb/server.ps1`는 `../milkit/milkit.psm1`를 import하고, `Use-Static $app "/" "./"`로 `bb/` 정적 파일을 서빙함.
