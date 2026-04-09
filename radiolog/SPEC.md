@@ -3,7 +3,7 @@
 ## 1. 개요
 
 - 목적: 무선 운용 일지를 웹에서 입력/관리한다.
-- 범위: 정적 웹앱(`index.html`, `view.html`, `script.js`, `view.js`, `style.css`, `view.css`)과 간단 서버(`server.ps1`)를 포함한다.
+- 범위: 정적 웹앱(`index.html`, `view.html`, `utils.js`, `script.js`, `view.js`, `style.css`, `view.css`)과 간단 서버(`server.ps1`)를 포함한다.
 - 서버: `milkit/milkit.psm1`을 사용해 정적 파일을 서빙한다.
 - 저장: 현재 작성 중인 일지는 브라우저 `localStorage`에 저장한다.
 - 원칙: 루트 `AUDIT.md`의 최소 구현/최소 검증을 따른다.
@@ -16,6 +16,7 @@
 - `GET /view.html`
 - `GET /style.css`
 - `GET /view.css`
+- `GET /utils.js`
 - `GET /script.js`
 - `GET /view.js`
 - `GET /health` -> `{ "status": "ok" }`
@@ -141,6 +142,7 @@ PRE 행(`사단망 PRE`, `여단망 PRE`)은 아래 3개 PRE 전용 입력값을
 - 상단 Header 2행은 우측 정렬 세로 컬럼으로 `날짜`, `오전 근무자`, `오후 근무자`를 표시한다.
 - 상단 Header 3행은 `초기화`, `보기 모드` 버튼을 표시한다.
 - `보기 모드` 버튼은 `/view`를 새 탭으로 연다.
+- `index.html`, `view.html`은 `utils.js`를 가장 먼저 로드하고, 이후 각 화면 스크립트가 전역 함수로 이를 사용한다.
 - 사단망/여단망의 1번 컬럼(행 라벨) 너비는 동일한 고정폭으로 유지한다.
 - `구분` 컬럼(2번 컬럼)은 표 간 동일한 고정폭을 유지한다.
 - Desktop 전용 고정 레이아웃을 사용하고, 매트릭스 너비는 화면 폭 안에 맞춘다.

@@ -28,22 +28,22 @@ const CF_MANUAL_SLOT_KEYS = BRIGADE_CF_SLOTS.filter((slot) => slot.isManualTime)
 );
 
 const elements = {
-  dateInput: document.querySelector("#date-input"),
-  resetButton: document.querySelector("#reset-btn"),
-  viewButton: document.querySelector("#view-btn"),
-  authorAm: document.querySelector("#author-am"),
-  authorPm: document.querySelector("#author-pm"),
-  journalBlocks: document.querySelector("#journal-blocks"),
-  divisionBody: document.querySelector("#division-body"),
-  divisionPreBody: document.querySelector("#division-pre-body"),
-  brigadeCfBody: document.querySelector("#brigade-cf-body"),
-  brigadeFBody: document.querySelector("#brigade-f-body"),
-  brigadePreBody: document.querySelector("#brigade-pre-body"),
-  notePopover: document.querySelector("#note-popover"),
-  noteTextarea: document.querySelector("#note-textarea"),
-  noteCloseButton: document.querySelector("#note-close-btn"),
-  cellContextMenu: document.querySelector("#cell-context-menu"),
-  cellNoContactAction: document.querySelector("#cell-no-contact-action")
+  dateInput: $("#date-input"),
+  resetButton: $("#reset-btn"),
+  viewButton: $("#view-btn"),
+  authorAm: $("#author-am"),
+  authorPm: $("#author-pm"),
+  journalBlocks: $("#journal-blocks"),
+  divisionBody: $("#division-body"),
+  divisionPreBody: $("#division-pre-body"),
+  brigadeCfBody: $("#brigade-cf-body"),
+  brigadeFBody: $("#brigade-f-body"),
+  brigadePreBody: $("#brigade-pre-body"),
+  notePopover: $("#note-popover"),
+  noteTextarea: $("#note-textarea"),
+  noteCloseButton: $("#note-close-btn"),
+  cellContextMenu: $("#cell-context-menu"),
+  cellNoContactAction: $("#cell-no-contact-action")
 };
 
 const state = {
@@ -53,17 +53,6 @@ const state = {
   activeNoteAnchor: null,
   activeContextRowId: ""
 };
-
-function formatDate(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function getToday() {
-  return formatDate(new Date());
-}
 
 function getStorageKey(dateString) {
   return `${STORAGE_JOURNAL_PREFIX}${dateString}`;
@@ -246,38 +235,6 @@ function saveAuthorFields() {
   localStorage.setItem(getAuthorStorageKey(state.currentDate), JSON.stringify(payload));
 }
 
-function isDivisionRow(row) {
-  return row.linkType === "사단망";
-}
-
-function isPreRow(row) {
-  return row.linkType === PRE_LINK_TYPE;
-}
-
-function isGeneralContactRow(row) {
-  return Boolean(row) && !isPreRow(row);
-}
-
-function isNoContactEnabled(row) {
-  return isGeneralContactRow(row) && row.isNoContact === true;
-}
-
-function isCfManualRow(row) {
-  return (
-    row.linkType === "여단망" &&
-    row.network === "CF" &&
-    CF_MANUAL_SLOT_KEYS.includes(row.slotLabel)
-  );
-}
-
-function isFRow(row) {
-  return row.linkType === "여단망" && row.network === "F";
-}
-
-function requiresRecordedTime(row) {
-  return isDivisionRow(row) || isCfManualRow(row) || isFRow(row);
-}
-
 function isRowComplete(row) {
   if (isPreRow(row)) {
     if (!row.preReceiveStatus) {
@@ -314,15 +271,6 @@ function isRowComplete(row) {
   return Boolean(row.recordedTime);
 }
 
-function escapeHtml(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
 function renderSelectOptions(options, selectedValue) {
   return options
     .map((value) => {
@@ -331,29 +279,6 @@ function renderSelectOptions(options, selectedValue) {
       return `<option value="${escapeHtml(value)}"${selected}>${escapeHtml(label)}</option>`;
     })
     .join("");
-}
-
-function renderGuideCell(labels) {
-  const items = labels
-    .map((label) => `<div class="guide-item">${escapeHtml(label)}</div>`)
-    .join("");
-  return `<td class="guide-label"><div class="guide-stack">${items}</div></td>`;
-}
-
-function getRowKey(linkType, network, slotLabel, targetUnit) {
-  return `${linkType}|${network}|${slotLabel}|${targetUnit}`;
-}
-
-function createRowLookup(rows) {
-  const lookup = new Map();
-  rows.forEach((row) => {
-    lookup.set(getRowKey(row.linkType, row.network, row.slotLabel, row.targetUnit), row);
-  });
-  return lookup;
-}
-
-function findRow(lookup, linkType, network, slotLabel, targetUnit) {
-  return lookup.get(getRowKey(linkType, network, slotLabel, targetUnit)) || null;
 }
 
 function renderNoteTrigger(row) {
@@ -555,16 +480,6 @@ function renderDivisionPreRows(lookup) {
     .join("");
 }
 
-function getBrigadeSlotTimeValue(lookup, network, slotKey) {
-  for (const unit of BRIGADE_UNITS) {
-    const row = findRow(lookup, "여단망", network, slotKey, unit);
-    if (row) {
-      return row.recordedTime || "";
-    }
-  }
-  return "";
-}
-
 function renderBrigadeSlotLabel(lookup, network, slot) {
   if (!slot.isManualTime) {
     return escapeHtml(slot.label);
@@ -720,7 +635,7 @@ function findContextTargetRow(target) {
 }
 
 function findNoteTriggerButton(rowId) {
-  const triggers = document.querySelectorAll("[data-note-trigger]");
+  const triggers = $$("[data-note-trigger]");
   for (const trigger of triggers) {
     if (!(trigger instanceof HTMLButtonElement)) {
       continue;
@@ -865,7 +780,7 @@ function loadDate(dateString) {
 }
 
 function findCellElement(rowId) {
-  const cells = document.querySelectorAll("[data-row-cell]");
+  const cells = $$("[data-row-cell]");
   for (const cell of cells) {
     if (cell.dataset.rowCell === rowId) {
       return cell;

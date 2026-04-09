@@ -1,5 +1,36 @@
 # HANDOFF
 
+## 2026-04-09
+
+### 추가 작업 요약 (radiolog server 정리 + utils 분리)
+- 사용자 요청에 따라 `radiolog/eg.ps1`를 제거하고 `radiolog/server.ps1`를 `Use-Static` 기반 정적 서빙 구조로 단순화함.
+- `radiolog/server.ps1`는 정적 파일 서빙을 `Use-Static $app "/" "./"`에 맡기고, 기존 계약 유지를 위해 `GET /health`, `GET /view`만 명시 라우트로 유지함.
+- `radiolog/utils.js`를 신규 추가해 날짜 유틸(`formatDate`, `getToday`, `isValidDateString`), 표시/escape 유틸, 셀렉터(`$`, `$$`), 공용 predicate/lookup/helper를 전역 함수로 분리함.
+- `radiolog/index.html`, `radiolog/view.html`에서 `utils.js`를 가장 먼저 로드하도록 수정함.
+- `radiolog/script.js`, `radiolog/view.js`에서 중복되던 공용 유틸 정의를 제거하고 `utils.js` 전역 함수를 사용하도록 정리함.
+- `radiolog/SPEC.md`에 `utils.js` 자산, `GET /utils.js`, HTML 선로드 규칙을 반영함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/radiolog/utils.js` 통과.
+- `node --check /workspaces/mil/radiolog/script.js` 통과.
+- `node --check /workspaces/mil/radiolog/view.js` 통과.
+- `pwsh -NoLogo -NoProfile -Command "[void][scriptblock]::Create((Get-Content -LiteralPath '/workspaces/mil/radiolog/server.ps1' -Raw)); 'PARSE_OK'"` 결과 `PARSE_OK` 확인.
+- `rg -n "utils\\.js|script\\.js|view\\.js" /workspaces/mil/radiolog/index.html /workspaces/mil/radiolog/view.html`로 스크립트 로드 순서 반영 확인.
+- `rg -n "GET /utils\\.js|utils\\.js.*가장 먼저" /workspaces/mil/radiolog/SPEC.md`로 명세 반영 확인.
+
+### 추가 작업 요약 (milkit `Use-Static` 탐색 범위 확인)
+- 사용자 질문에 따라 [`milkit/milkit.psm1`](/workspaces/mil/milkit/milkit.psm1) 구현을 검토해 `Use-Static` 등록 시 정적 파일 탐색 범위를 확인함.
+- `Use-Static`는 `Prefix`, `RootPath`, `DefaultDocuments`만 규칙으로 저장하며, 등록 시점에 `DefaultDocuments` 기반 탐색 제한을 만들지 않음을 확인함.
+- 실제 서빙은 `Try-ServeStatic`에서 요청 경로를 `RootPath` 아래 실제 파일로 바로 해석하고, leaf 파일이면 즉시 응답함.
+- `DefaultDocuments`는 요청 대상이 디렉토리일 때만(`PathType Container`) 순서대로 붙여서 찾는 용도로만 사용됨.
+- 따라서 현재 구현은 `defaultDocuments`에 등록된 파일만 탐색하는 구조가 아니라, 정적 루트 하위의 직접 요청 파일 전체를 대상으로 하고 디렉토리 요청에만 기본 문서를 적용하는 구조임.
+
+### 추가 검증 메모
+- `AUDIT.md` 확인 후 최소 구현/최소 검증 원칙 기준으로 코드 변경 없이 질의 응답만 수행함.
+- 근거 확인 위치:
+  - [`milkit/milkit.psm1`](/workspaces/mil/milkit/milkit.psm1#L346) `Try-ServeStatic`
+  - [`milkit/milkit.psm1`](/workspaces/mil/milkit/milkit.psm1#L608) `Use-Static`
+
 ## 2026-04-02
 
 ### 추가 작업 요약 (radiolog `교신자 -> 근무자` 스크립트 일괄 변경)
@@ -1049,4 +1080,3 @@
 ### 추가 검증 메모
 - `rg -n "@media print|\\.blocks \\{|break-inside: auto|page-break-inside: auto|break-inside: avoid|print-signature" /workspaces/mil/radiolog/view.css`로 인쇄 분할 규칙 반영 확인.
 - `git diff -- /workspaces/mil/radiolog/view.css`로 변경 범위가 print 전용 `.blocks` 규칙 추가 1건임을 확인.
-

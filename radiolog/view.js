@@ -1,20 +1,16 @@
 const viewElements = {
-  dateValue: document.querySelector("#view-date-value"),
-  authorAm: document.querySelector("#view-author-am"),
-  authorPm: document.querySelector("#view-author-pm"),
-  emptyPanel: document.querySelector("#view-empty"),
-  emptyDetail: document.querySelector("#view-empty-detail"),
-  journalBlocks: document.querySelector("#view-journal-blocks"),
-  divisionBody: document.querySelector("#view-division-body"),
-  divisionPreBody: document.querySelector("#view-division-pre-body"),
-  brigadeCfBody: document.querySelector("#view-brigade-cf-body"),
-  brigadeFBody: document.querySelector("#view-brigade-f-body"),
-  brigadePreBody: document.querySelector("#view-brigade-pre-body")
+  dateValue: $("#view-date-value"),
+  authorAm: $("#view-author-am"),
+  authorPm: $("#view-author-pm"),
+  emptyPanel: $("#view-empty"),
+  emptyDetail: $("#view-empty-detail"),
+  journalBlocks: $("#view-journal-blocks"),
+  divisionBody: $("#view-division-body"),
+  divisionPreBody: $("#view-division-pre-body"),
+  brigadeCfBody: $("#view-brigade-cf-body"),
+  brigadeFBody: $("#view-brigade-f-body"),
+  brigadePreBody: $("#view-brigade-pre-body")
 };
-
-function isValidDateString(value) {
-  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
-}
 
 function getViewDate() {
   const savedDate = localStorage.getItem(STORAGE_DATE_KEY);
@@ -22,17 +18,6 @@ function getViewDate() {
     return savedDate;
   }
   return getToday();
-}
-
-function hasDisplayText(value) {
-  return typeof value === "string" && value.trim() !== "";
-}
-
-function displayText(value) {
-  if (!hasDisplayText(value)) {
-    return "-";
-  }
-  return value;
 }
 
 function renderLine(value) {
