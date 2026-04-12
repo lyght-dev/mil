@@ -21,7 +21,7 @@ ACS는 군부대 장병의 입영 및 퇴영 기록을 중앙에서 수집하고
 - 엔트리 파일: `server.ps1`
 - 구현 원칙:
   - `AUDIT.md`의 최소 구현, 최소 검증 원칙을 따른다.
-  - 서버는 `POST /access`와 정적 파일 서빙에 집중한다.
+  - 서버는 `POST /access`, `GET /event`, 정적 파일 서빙에 집중한다.
   - 복잡한 validation, decode, dedupe는 서버에 넣지 않는다.
   - 현재 인원 상태판용 서버 메모리 상태는 두지 않는다.
   - 로그 조회 가공은 FE 브라우저에서 처리한다.
@@ -47,6 +47,7 @@ ACS의 목적은 다음과 같다.
 - 정적 폰트 파일 서빙(`public/PretendardJP-Regular.woff2`, `public/PretendardJP-SemiBold.woff2`, `public/PretendardJP-Bold.woff2`, `public/PretendardJP-ExtraBold.woff2`)
 - 정적 데이터 파일 서빙(`list.json`, `location.json`, `logs/access-log.csv`)
 - 입퇴영 요청 수신
+- SSE 연결 수신(`GET /event`)
 - `list.json` 기반 허용 군번 검증
 - CSV append-only 기록 저장
 - FE 로그 조회와 현재 인원 명단 조회
@@ -87,10 +88,12 @@ ACS의 목적은 다음과 같다.
 
 - HTTP 요청 수신
 - 정적 파일 서빙
+- `/event` SSE 연결 유지
 - 요청 본문에서 `type`, `serial`, `location` 읽기
 - `list.json`의 member 정보로 `serial` 허용 여부를 확인
 - 허용된 `serial`의 군번 `id`를 응답과 로그에 사용
 - 기록 CSV에 append
+- 새 access 기록이 성공하면 연결된 SSE client 전체에 이벤트 전송
 
 ---
 
@@ -153,6 +156,7 @@ GET /public/PretendardJP-ExtraBold.woff2
 GET /list.json
 GET /location.json
 GET /logs/access-log.csv
+GET /event
 POST /setting/member/create
 POST /setting/member/update
 POST /setting/member/delete
@@ -167,7 +171,28 @@ POST /setting/member/reissue
 - `logs/access-log.csv`는 원본 CSV 전체를 그대로 내려준다.
 - `setting.html`은 CRUD UI 렌더/검색/재조회와 CRUD API 호출까지 수행한다.
 
-### 8.2 입퇴영 요청
+### 8.2 SSE 이벤트 스트림
+
+```text
+GET /event
+Accept: text/event-stream
+```
+
+이벤트 예시:
+
+```text
+event: access
+data: {"time":"2026-04-12T14:00:00.0000000Z","type":"entry","location":"gate-1","id":"a25-76000001"}
+```
+
+규칙:
+
+- `board.html`만 `/event`에 연결한다.
+- 서버는 연결된 모든 client를 유지한다.
+- 서버는 `POST /access`가 성공적으로 기록된 직후 `access` 이벤트를 브로드캐스트한다.
+- SSE 이벤트는 현황판 갱신 트리거로만 사용하고, 실제 조회 데이터는 계속 `list.json`, `location.json`, `logs/access-log.csv`를 다시 읽어 계산한다.
+
+### 8.3 입퇴영 요청
 
 ```text
 POST /access
@@ -216,7 +241,15 @@ Content-Type: application/json
 2. 서버가 요청 값을 읽는다.
 3. 서버가 `list.json` 기준으로 `serial` 허용 여부를 확인한다.
 4. 허용되면 대응하는 `id`를 찾아 CSV에 한 줄 append한다.
-5. `{status:"logged",id:"..."}`를 응답한다.
+5. 서버가 연결된 `/event` client 전체에 `access` SSE 이벤트를 보낸다.
+6. `{status:"logged",id:"..."}`를 응답한다.
+
+### 9.3 `GET /event`
+
+1. 현황판 FE가 `/event`에 연결한다.
+2. 서버가 SSE 응답을 연 상태로 client를 목록에 보관한다.
+3. 이후 access 기록이 성공할 때마다 서버가 `access` 이벤트를 보낸다.
+4. 현황판 FE는 이벤트를 받으면 정적 JSON/CSV를 다시 읽어 화면을 갱신한다.
 
 ---
 
@@ -245,6 +278,8 @@ time,type,location,id
 
 - FE는 `logs/access-log.csv` 전체를 읽는다.
 - FE는 CSV 전체에서 군번별 마지막 로그 1건을 계산한다.
+- FE는 `board.html` 최초 진입 시 1회 로그를 읽는다.
+- FE는 `/event`의 `access` 이벤트를 받으면 JSON/CSV를 다시 읽어 화면을 갱신한다.
 - `전체` 모드에서는 각 행의 `time`을 KST 기준 날짜로 변환한다.
 - `전체` 모드에서는 선택한 날짜의 로그만 화면에 남긴다.
 - `전체` 모드에서는 군번, 이름, 위치 기준 검색을 수행한다.
@@ -274,9 +309,11 @@ time,type,location,id
 1. 중앙 HTTP 서버로 실행될 수 있어야 한다.
 2. `list.json`, `location.json`, `logs/access-log.csv`를 정적 파일로 서빙할 수 있어야 한다.
 3. `POST /access` 요청을 받을 수 있어야 한다.
-4. 요청의 `type`, `serial`, `location`을 읽고 대응하는 `id`를 CSV에 기록할 수 있어야 한다.
-5. `serial`이 `list.json`의 member 정보에 없으면 요청을 거부할 수 있어야 한다.
-6. FE 조회 화면이 CSV 전체를 읽어 로그 모드와 현재 입영/퇴영 전체 목록 모드를 처리할 수 있어야 한다.
+4. `GET /event` SSE 연결을 받을 수 있어야 한다.
+5. 요청의 `type`, `serial`, `location`을 읽고 대응하는 `id`를 CSV에 기록할 수 있어야 한다.
+6. access 기록 직후 연결된 SSE client 전체에 이벤트를 보낼 수 있어야 한다.
+7. `serial`이 `list.json`의 member 정보에 없으면 요청을 거부할 수 있어야 한다.
+8. FE 조회 화면이 CSV 전체를 읽어 로그 모드와 현재 입영/퇴영 전체 목록 모드를 처리할 수 있어야 한다.
 
 ---
 
@@ -320,10 +357,12 @@ time,type,location,id
 
 ```text
 GET /logs/access-log.csv
+GET /event
 ```
 
 - FE 처리:
-  - CSV 전체 수신
+  - 최초 1회 CSV 전체 수신
+  - 이후 `access` SSE 수신 시 CSV 전체 재조회
   - 군번별 마지막 로그 타입 계산
   - `전체` 선택 시 KST 날짜 필터링 후 로그 표시
   - `현재 입영자` 선택 시 현재 입영자 전체 명단 표시
@@ -336,6 +375,6 @@ GET /logs/access-log.csv
 
 - 현재 단계에서 서버는 client 요청을 신뢰한다.
 - 서버는 바코드 원문을 알 필요가 없다.
-- 서버는 로그 저장과 정적 파일 서빙에만 집중한다.
+- 서버는 로그 저장, `/event` 브로드캐스트, 정적 파일 서빙에만 집중한다.
 - 현재 상태판과 상태 API는 더 이상 사용하지 않는다.
 - 조회 가공을 FE로 옮겨 PowerShell 서버의 CPU 부담을 줄인다.

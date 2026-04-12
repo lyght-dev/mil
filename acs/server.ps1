@@ -5,6 +5,8 @@ $script:LogPath = ""
 $script:ListPath = ""
 $script:AllowedIds = @{}
 $script:SerialToMember = @{}
+$script:SseClients = [System.Collections.ArrayList]::new()
+$script:SseClientsLock = New-Object object
 $script:Prefix = "http://+:8888/"
 
 function Get-ContentType {
@@ -78,6 +80,20 @@ function Send-JsonResponse {
     $json = $Payload | ConvertTo-Json -Compress -Depth 8
 
     Send-TextResponse -Response $Response -Text $json -ContentType "application/json; charset=utf-8" -StatusCode $StatusCode
+}
+
+function Write-SseText {
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Net.HttpListenerResponse]$Response,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Text
+    )
+
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($Text)
+    $Response.OutputStream.Write($bytes, 0, $bytes.Length)
+    $Response.OutputStream.Flush()
 }
 
 function Send-RejectedResponse {
@@ -496,6 +512,115 @@ function Add-AccessRecord {
     [System.IO.File]::AppendAllText($LogPath, $line + [Environment]::NewLine, $encoding)
 }
 
+function Add-SseClient {
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Net.HttpListenerResponse]$Response
+    )
+
+    [System.Threading.Monitor]::Enter($script:SseClientsLock)
+
+    try {
+        [void]$script:SseClients.Add($Response)
+    } finally {
+        [System.Threading.Monitor]::Exit($script:SseClientsLock)
+    }
+}
+
+function Remove-SseClient {
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Net.HttpListenerResponse]$Response
+    )
+
+    [System.Threading.Monitor]::Enter($script:SseClientsLock)
+
+    try {
+        [void]$script:SseClients.Remove($Response)
+    } finally {
+        [System.Threading.Monitor]::Exit($script:SseClientsLock)
+    }
+
+    try {
+        if ($Response.OutputStream.CanWrite) {
+            $Response.OutputStream.Close()
+        }
+    } catch {
+    }
+
+    try {
+        $Response.Close()
+    } catch {
+    }
+}
+
+function Get-SseClientsSnapshot {
+    [System.Threading.Monitor]::Enter($script:SseClientsLock)
+
+    try {
+        return @($script:SseClients.ToArray())
+    } finally {
+        [System.Threading.Monitor]::Exit($script:SseClientsLock)
+    }
+}
+
+function Send-AccessEvent {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Type,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Location,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Id
+    )
+
+    $clients = @(Get-SseClientsSnapshot)
+    if ($clients.Count -eq 0) { return }
+
+    $payload = @{
+        time = [DateTime]::UtcNow.ToString("o")
+        type = $Type
+        location = $Location
+        id = $Id
+    } | ConvertTo-Json -Compress
+    $message = "event: access`ndata: $payload`n`n"
+
+    foreach ($client in $clients) {
+        try {
+            Write-SseText -Response $client -Text $message
+        } catch {
+            Remove-SseClient -Response $client
+        }
+    }
+}
+
+function Invoke-EventRoute {
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Net.HttpListenerResponse]$Response
+    )
+
+    $Response.StatusCode = 200
+    $Response.ContentType = "text/event-stream; charset=utf-8"
+    $Response.KeepAlive = $true
+    $Response.SendChunked = $true
+    $Response.Headers["Cache-Control"] = "no-cache"
+
+    try {
+        Write-SseText -Response $Response -Text ": connected`n`n"
+        Add-SseClient -Response $Response
+    } catch {
+        try {
+            $Response.Close()
+        } catch {
+        }
+    }
+
+    return $true
+}
+
 
 function Invoke-StaticResourceRoute {
     param(
@@ -608,6 +733,8 @@ function Invoke-AccessRoute {
         return $true
     }
 
+    Send-AccessEvent -Type $type -Location $location -Id $id
+
     Send-JsonResponse -Response $Response -Payload @{
         status = "logged"
         id = $id
@@ -636,6 +763,7 @@ function Invoke-ApiRoute {
     $method = $request.HttpMethod.ToUpperInvariant()
 
     if (Invoke-SettingApiRoute -Context $Context -AllowedIds $AllowedIds -SerialToMember $SerialToMember) { return $true }
+    if ($method -eq "GET" -and $path -eq "/event") { return (Invoke-EventRoute -Response $response) }
     if ($method -eq "POST" -and $path -eq "/access") { return (Invoke-AccessRoute -Request $request -Response $response -LogPath $LogPath -AllowedIds $AllowedIds -SerialToMember $SerialToMember) }
 
     return $false
@@ -693,6 +821,11 @@ function Start-AcsServer {
             }
         }
     } finally {
+        $clients = @(Get-SseClientsSnapshot)
+        foreach ($client in $clients) {
+            Remove-SseClient -Response $client
+        }
+
         if ($listener.IsListening) {
             $listener.Stop()
         }

@@ -1,10 +1,8 @@
 const DUPLICATE_WINDOW_MS = 15000;
-const BOARD_POLL_MS = 5000;
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
 const $ = id => document.getElementById(id);
 
-let boardTimerId = null;
 let boardLogs = [];
 let currentStatusById = new Map();
 let scannerLocation = "";
@@ -14,6 +12,9 @@ let allowedMembers = [];
 let allowedMemberById = new Map();
 let locationsLoadPromise = null;
 let membersLoadPromise = null;
+let boardRefreshPromise = null;
+let boardRefreshQueued = false;
+let boardEventSource = null;
 const recentScans = {};
 
 const createRequestError = (status, text) => {
@@ -532,35 +533,56 @@ const refreshLogs = async () => {
   const body = $("log-body");
   if (!body) return;
 
+  if (boardRefreshPromise) {
+    boardRefreshQueued = true;
+    return boardRefreshPromise;
+  }
+
   const status = $("bd-stat");
   const updated = $("bd-upd");
 
-  try {
-    const membersTask = loadMembers().catch(() => null);
-    const [locations, csvText] = await Promise.all([loadLocations(), fetchLogsCsv()]);
+  boardRefreshPromise = (async () => {
+    try {
+      const membersTask = loadMembers().catch(() => null);
+      const [locations, csvText] = await Promise.all([loadLocations(), fetchLogsCsv()]);
 
-    setConfiguredLocations(locations);
-    boardLogs = parseAccessLogsCsv(csvText);
-    currentStatusById = buildCurrentStatusById(boardLogs);
-    await membersTask;
-    syncBoardControls();
-    renderBoard();
-    if (status) status.textContent = "정상";
-    if (updated) updated.textContent = new Date().toLocaleString();
-  } catch {
-    if (status) status.textContent = "실패";
-  }
+      setConfiguredLocations(locations);
+      boardLogs = parseAccessLogsCsv(csvText);
+      currentStatusById = buildCurrentStatusById(boardLogs);
+      await membersTask;
+      syncBoardControls();
+      renderBoard();
+      if (status) status.textContent = "정상";
+      if (updated) updated.textContent = new Date().toLocaleString();
+    } catch {
+      if (status) status.textContent = "실패";
+    } finally {
+      boardRefreshPromise = null;
+
+      if (boardRefreshQueued) {
+        boardRefreshQueued = false;
+        void refreshLogs();
+      }
+    }
+  })();
+
+  return boardRefreshPromise;
 };
 
-const startBoardPolling = () => {
+const initBoardEvents = () => {
   const root = $("log-body");
+  const status = $("bd-stat");
   if (!root) return;
 
-  if (boardTimerId !== null) clearInterval(boardTimerId);
+  if (boardEventSource) boardEventSource.close();
 
-  boardTimerId = window.setInterval(() => {
+  boardEventSource = new EventSource("/event");
+  boardEventSource.addEventListener("access", () => {
     void refreshLogs();
-  }, BOARD_POLL_MS);
+  });
+  boardEventSource.onerror = () => {
+    if (status) status.textContent = "실패";
+  };
 };
 
 const submitAccess = async () => {
@@ -708,7 +730,7 @@ const initBoardPage = () => {
   void loadMembers().catch(() => null);
   syncBoardControls();
   void refreshLogs();
-  startBoardPolling();
+  initBoardEvents();
 };
 
 void initScannerPage();

@@ -1,5 +1,24 @@
 # HANDOFF
 
+## 2026-04-12
+
+### 추가 작업 요약 (acs 디자인 작업용 워크트리 셋업)
+- `acs` 디자인 수정 작업 분리를 위해 새 git worktree를 생성함.
+- 새 워크트리 경로는 `/workspaces/mil-acs-design`이고, 새 브랜치는 `feat-acs-design`이다.
+- 기준점은 현 시점 로컬 `main` HEAD인 `d6a35c5`(`feat(acs): switch access scan flow to serial`)로 맞춤.
+- 원본 워크트리 `/workspaces/mil`의 기존 변경은 건드리지 않았고, 셋업 후에도 `acs/logs/access-log.csv` 수정 상태가 그대로 유지된다.
+
+### 다음 세션 인계 포인트
+- `acs` 디자인 수정은 `/workspaces/mil-acs-design`에서 진행하면 된다.
+- 새 워크트리 시작 전에도 루트 `AUDIT.md`, `acs/SPEC.md`, 필요 시 `acs/HANDOFF.md`를 먼저 확인한다.
+- `feat-acs-design`은 clean 상태로 생성됐으므로 디자인 변경만 별도 커밋으로 분리하기 쉽다.
+
+### 검증 내역
+- `git worktree list`에서 `/workspaces/mil-acs-design  d6a35c5 [feat-acs-design]` 확인
+- `git -C /workspaces/mil-acs-design status --short --branch` 결과 `## feat-acs-design` 확인
+- `git -C /workspaces/mil-acs-design rev-parse --short=7 HEAD` 결과 `d6a35c5` 확인
+- `git status --short --branch`로 원본 워크트리 변경(`acs/logs/access-log.csv`) 보존 확인
+
 ## 2026-04-09
 
 ### 추가 작업 요약 (`bb` 사용자/컴퓨터 로그 영역 분리)
@@ -1200,3 +1219,16 @@
 ### 추가 검증 메모
 - `rg -n "@media print|\\.blocks \\{|break-inside: auto|page-break-inside: auto|break-inside: avoid|print-signature" /workspaces/mil/radiolog/view.css`로 인쇄 분할 규칙 반영 확인.
 - `git diff -- /workspaces/mil/radiolog/view.css`로 변경 범위가 print 전용 `.blocks` 규칙 추가 1건임을 확인.
+
+### 추가 작업 요약 (acs `/event` SSE 브로드캐스트 추가)
+- `acs/server.ps1`에 `GET /event` SSE 엔드포인트를 추가하고, `/access` 성공 직후 연결된 클라이언트 전체에 `access` 이벤트를 브로드캐스트하도록 구현함.
+- SSE는 열린 `HttpListenerResponse`를 메모리에 보관하는 최소 구조로 추가했고, write 실패 시 해당 클라이언트를 제거하도록 처리함.
+- `acs/script.js`에서 현황판(`board.html`)만 `EventSource('/event')`에 연결하도록 추가하고, 기존 5초 polling은 제거함.
+- 현황판은 최초 1회 로드 후 `access` 이벤트 수신 시 정적 데이터(`logs/access-log.csv`, `list.json`, `location.json`)를 다시 읽어 즉시 재렌더링하도록 변경함.
+- 연속 이벤트 시 중복 fetch를 줄이기 위해 `refreshLogs()`에 in-flight/queued 보호를 추가함.
+- `acs/SPEC.md`, `acs/HANDOFF.md`에 `/event` 계약과 구현/검증 메모를 반영함.
+
+### 추가 검증 메모
+- `pwsh -NoLogo -NoProfile -Command "[System.Management.Automation.Language.Parser]::ParseFile('/workspaces/mil/acs/server.ps1',[ref]$null,[ref]$null) | Out-Null; 'PARSE_OK'"` 결과 `PARSE_OK` 확인.
+- `node --check /workspaces/mil/acs/script.js` 통과.
+- 임시 복사본(`/tmp/acs-sse-test`)에서 `pwsh -NoLogo -NoProfile -File ./server.ps1`, `curl -N http://127.0.0.1:8888/event`, `curl -sS -X POST http://127.0.0.1:8888/access ...` 조합으로 SSE `access` 수신까지 확인.

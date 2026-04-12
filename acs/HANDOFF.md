@@ -576,3 +576,43 @@
   - `pwsh -Command ". ./ACS.ps1; Main -Place 'gate-1'"`
   - `pwsh -Command "$src = Get-Content ./ACS.ps1 -Raw; Invoke-Expression $src; Start-ACS -Place 'gate-1' -AppRoot '/workspaces/mil/acs'"`
   - 위 세 경로 모두 정상 시작 후 `exit` 종료 확인.
+
+## 2026-04-12
+
+### 작업 요약
+- `acs/server.ps1`에 `GET /event` SSE 엔드포인트를 추가함.
+- `/access`가 정상적으로 CSV append를 마친 직후 연결된 SSE 클라이언트 전체에 `access` 이벤트를 브로드캐스트하도록 구현함.
+- SSE는 `HttpListenerResponse`를 열린 상태로 목록에 보관하는 단순 구조로 추가했고, write 실패 시 해당 클라이언트를 정리하도록 처리함.
+- `acs/script.js`에서 현황판(`board.html`)만 `EventSource('/event')`를 열도록 추가하고, 기존 5초 polling은 제거함.
+- 현황판은 최초 1회 로드 후 `access` SSE를 받을 때마다 `logs/access-log.csv`, `list.json`, `location.json`을 다시 읽어 재렌더링하도록 조정함.
+- 연속 이벤트에서 중복 fetch가 겹치지 않도록 `refreshLogs()`에 in-flight/queued 보호를 추가함.
+- `acs/SPEC.md`에 `/event` 계약과 SSE 기반 현황판 갱신 흐름을 반영함.
+
+### 산출물
+- `acs/server.ps1`
+  - `Write-SseText`, `Add-SseClient`, `Remove-SseClient`, `Get-SseClientsSnapshot`, `Send-AccessEvent`, `Invoke-EventRoute` 추가
+  - `Invoke-ApiRoute`에 `GET /event` 분기 추가
+  - `Invoke-AccessRoute` 성공 경로에서 SSE 브로드캐스트 호출 추가
+  - 서버 종료 시 열려 있는 SSE 응답 정리 추가
+- `acs/script.js`
+  - `BOARD_POLL_MS`, `startBoardPolling()` 제거
+  - `boardRefreshPromise`, `boardRefreshQueued`, `boardEventSource` 추가
+  - `refreshLogs()` 중복 호출 합치기 로직 추가
+  - `initBoardEvents()` 추가 후 현황판 초기화에서 SSE 연결 사용
+- `acs/SPEC.md`
+  - `/event` 엔드포인트와 `access` SSE 이벤트 계약 추가
+  - 현황판이 polling 대신 SSE-triggered refresh를 사용한다고 명시
+
+### 다음 세션 인계 포인트
+- 현재 SSE 소비자는 `board.html`만 연결한다. `index.html`, `setting.html`은 연결하지 않는다.
+- SSE는 갱신 트리거만 담당하고, 현황판의 데이터 SOT는 여전히 `logs/access-log.csv`, `list.json`, `location.json`이다.
+- 서버는 heartbeat나 Last-Event-ID 재전송은 구현하지 않았다. 현재 요구 범위에서는 access 발생 시점 이벤트 전송만 보장한다.
+- `/access` reject 또는 CSV write 실패 시에는 SSE를 보내지 않는다.
+
+### 검증 메모
+- `pwsh -NoLogo -NoProfile -Command "[System.Management.Automation.Language.Parser]::ParseFile('/workspaces/mil/acs/server.ps1',[ref]$null,[ref]$null) | Out-Null; 'PARSE_OK'"` 결과 `PARSE_OK` 확인.
+- `node --check /workspaces/mil/acs/script.js` 통과.
+- 임시 복사본(`/tmp/acs-sse-test`)에서 `pwsh -NoLogo -NoProfile -File ./server.ps1`로 서버 기동 확인.
+- `curl -N http://127.0.0.1:8888/event` 연결 시 `: connected` 수신 확인.
+- `curl -sS -X POST http://127.0.0.1:8888/access -H 'Content-Type: application/json' --data '{"type":"exit","serial":"123456","location":"gate-1"}'` 응답 `{ "status": "logged", "id": "a25-76000001" }` 확인.
+- 같은 SSE 연결에서 `event: access`와 `data: {"type":"exit","id":"a25-76000001","location":"gate-1","time":"..."}` 수신 확인.
