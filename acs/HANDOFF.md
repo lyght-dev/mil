@@ -3,6 +3,27 @@
 ## 2026-04-12
 
 ### 작업 요약
+- `acs/script.js` 스캐너 전송 흐름을 `id` 기반에서 `serial` 기반으로 변경함.
+  - 바코드 `EN`/`EX` 접두어 뒤 값을 `serial`로 해석해 `/access`에 전송함.
+  - `/access` 응답에서 `id`를 받아 기존 이름 조회/성공 메시지 흐름을 그대로 사용하도록 조정함.
+- `acs/server.ps1`의 `POST /access` 성공 응답에 `id`를 포함하도록 변경함.
+  - 서버는 기존처럼 `serial -> member -> id` 매핑 후 `id`를 로그에 기록하고, 응답에도 같은 `id`를 반환함.
+- `acs/index.html` 스캐너 입력 placeholder를 `serial` 예시에 맞게 `EN123456`으로 변경함.
+- `acs/SPEC.md`를 현재 계약에 맞게 갱신함.
+  - 요청 본문은 `type`, `serial`, `location`
+  - 서버 응답은 `{status:"logged", id:"..."}`
+  - 서버 검증 기준은 `list.json`의 `serial`
+
+### 다음 세션 인계 포인트
+- 현재 스캐너 FE는 바코드 접두어(`EN`/`EX`) 뒤 전체 값을 `serial`로 간주한다.
+- 서버는 `/access`에서 `serial`을 받아 `list.json`의 member로 매칭한 뒤 로그에는 계속 `id`를 남긴다.
+- 현황판/로그 계산 로직은 여전히 `id` 기준이라 추가 수정은 없다.
+
+### 검증 내역
+- `node --check /workspaces/mil/acs/script.js`
+- `pwsh -NoLogo -NoProfile -Command "[void][scriptblock]::Create((Get-Content -LiteralPath '/workspaces/mil/acs/server.ps1' -Raw)); 'PARSE_OK'"`
+
+### 작업 요약
 - `acs/style.css` 상단에 `PretendardJP` `@font-face` 4개를 추가함.
   - `Regular(400)`, `SemiBold(600)`, `Bold(700)`, `ExtraBold(800)`를 `/public/PretendardJP-*.woff2` 경로로 등록함.
   - `body` 기본 폰트를 fallback 없이 `font-family: "PretendardJP";`로 변경함.

@@ -610,6 +610,7 @@ function Invoke-AccessRoute {
 
     Send-JsonResponse -Response $Response -Payload @{
         status = "logged"
+        id = $id
     }
     return $true
 }

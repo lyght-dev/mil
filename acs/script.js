@@ -126,11 +126,11 @@ const focusBarcodeInput = () => {
 const parseBarcode = rawValue => {
   const value = String(rawValue || "").replace(/\r/g, "").replace(/\n/g, "").trim();
   const upper = value.slice(0, 2).toUpperCase();
-  const id = value.slice(2).trim();
+  const serial = value.slice(2).trim();
 
-  if (!value || !id) return { ok: false, message: "바코드를 다시 확인해 주세요." };
-  if (upper === "EN") return { ok: true, type: "entry", id, raw: value };
-  if (upper === "EX") return { ok: true, type: "exit", id, raw: value };
+  if (!value || !serial) return { ok: false, message: "바코드를 다시 확인해 주세요." };
+  if (upper === "EN") return { ok: true, type: "entry", serial, raw: value };
+  if (upper === "EX") return { ok: true, type: "exit", serial, raw: value };
 
   return { ok: false, message: "지원하지 않는 바코드입니다." };
 };
@@ -582,8 +582,11 @@ const submitAccess = async () => {
   if (handleDuplicateSubmit(parsed, location, input)) return;
 
   try {
-    const { type, id, raw } = parsed;
-    await postAccess({ type, id, location });
+    const { type, serial, raw } = parsed;
+    const result = await postAccess({ type, serial, location });
+    const id = String(result?.id || "").trim();
+
+    if (!id) throw new Error("응답에 id가 없습니다.");
 
     markRecentScan(location, raw);
     showAccessResult({ type, id, name: getMemberName(id) });

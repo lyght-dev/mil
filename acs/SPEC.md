@@ -8,7 +8,7 @@ ACS는 군부대 장병의 입영 및 퇴영 기록을 중앙에서 수집하고
 
 - 중앙 서버 1개가 모든 gate 요청을 받는다.
 - 각 gate의 client가 바코드를 읽고 입영/퇴영을 판별한다.
-- client가 `type`, `id`, `location`을 서버로 전송한다.
+- client가 `type`, `serial`, `location`을 서버로 전송한다.
 - 서버는 요청을 신뢰하고 로그 기록과 정적 파일 서빙만 담당한다.
 - 조회 가공은 브라우저가 `list.json`, `location.json`, `logs/access-log.csv`를 직접 읽어 처리한다.
 
@@ -72,7 +72,7 @@ ACS의 목적은 다음과 같다.
 
 - 바코드 입력 수신
 - 바코드에서 입영/퇴영 구분
-- 바코드에서 군번 `id` 추출
+- 바코드에서 `serial` 추출
 - 스캐너 진입 시 `location.json` 후보 중 하나 선택
 - 요청에 `location` 포함
 - `list.json`을 직접 읽어 군번/이름 표시
@@ -87,8 +87,9 @@ ACS의 목적은 다음과 같다.
 
 - HTTP 요청 수신
 - 정적 파일 서빙
-- 요청 본문에서 `type`, `id`, `location` 읽기
-- `list.json`에 있는 군번인지 확인
+- 요청 본문에서 `type`, `serial`, `location` 읽기
+- `list.json`의 member 정보로 `serial` 허용 여부를 확인
+- 허용된 `serial`의 군번 `id`를 응답과 로그에 사용
 - 기록 CSV에 append
 
 ---
@@ -98,7 +99,7 @@ ACS의 목적은 다음과 같다.
 현재 단계에서 client와 server는 내부 안전 환경에서 동작한다고 가정한다.
 
 - client가 보낸 `type`, `location`은 신뢰한다.
-- `id`는 `list.json`에 있는 군번만 허용한다.
+- `serial`은 `list.json`의 member 정보에 있는 값만 허용한다.
 - `location.json`에 없는 `location`도 거부하지 않는다.
 - 과도한 형식 검증을 하지 않는다.
 - 복잡한 복구, fallback, 방어 로직을 넣지 않는다.
@@ -107,7 +108,7 @@ ACS의 목적은 다음과 같다.
 정상 경로 기준 기대값:
 
 - `type`: `entry` 또는 `exit`
-- `id`: 군번 문자열
+- `serial`: member에 매핑된 serial 문자열
 - `location`: gate 식별 문자열
 
 ---
@@ -178,7 +179,7 @@ Content-Type: application/json
 ```json
 {
   "type": "entry",
-  "id": "a25-76000001",
+  "serial": "123456",
   "location": "gate-1"
 }
 ```
@@ -187,14 +188,16 @@ Content-Type: application/json
 
 ```json
 {
-  "status": "logged"
+  "status": "logged",
+  "id": "a25-76000001"
 }
 ```
 
 규칙:
 
-- 서버는 `type`, `id`, `location`만 읽는다.
-- 서버는 `id`가 `list.json`에 없으면 거부한다.
+- 서버는 `type`, `serial`, `location`만 읽는다.
+- 서버는 `serial`이 `list.json`의 member 정보에 없으면 거부한다.
+- 서버는 허용된 `serial`에 대응하는 `id`를 응답에 포함한다.
 - 서버는 CSV에 로그를 append한다.
 
 ---
@@ -209,11 +212,11 @@ Content-Type: application/json
 
 ### 9.2 `POST /access`
 
-1. client가 `type`, `id`, `location`을 전송한다.
+1. client가 `type`, `serial`, `location`을 전송한다.
 2. 서버가 요청 값을 읽는다.
-3. 서버가 `list.json` 기준으로 `id` 허용 여부를 확인한다.
-4. 허용되면 CSV에 한 줄 append한다.
-5. `{status:"logged"}`를 응답한다.
+3. 서버가 `list.json` 기준으로 `serial` 허용 여부를 확인한다.
+4. 허용되면 대응하는 `id`를 찾아 CSV에 한 줄 append한다.
+5. `{status:"logged",id:"..."}`를 응답한다.
 
 ---
 
@@ -271,8 +274,8 @@ time,type,location,id
 1. 중앙 HTTP 서버로 실행될 수 있어야 한다.
 2. `list.json`, `location.json`, `logs/access-log.csv`를 정적 파일로 서빙할 수 있어야 한다.
 3. `POST /access` 요청을 받을 수 있어야 한다.
-4. 요청의 `type`, `id`, `location`을 읽어 CSV에 기록할 수 있어야 한다.
-5. `id`가 `list.json`에 없으면 요청을 거부할 수 있어야 한다.
+4. 요청의 `type`, `serial`, `location`을 읽고 대응하는 `id`를 CSV에 기록할 수 있어야 한다.
+5. `serial`이 `list.json`의 member 정보에 없으면 요청을 거부할 수 있어야 한다.
 6. FE 조회 화면이 CSV 전체를 읽어 로그 모드와 현재 입영/퇴영 전체 목록 모드를 처리할 수 있어야 한다.
 
 ---
@@ -286,14 +289,14 @@ time,type,location,id
 ```json
 {
   "type": "entry",
-  "id": "a25-76000001",
+  "serial": "123456",
   "location": "gate-1"
 }
 ```
 
 - 결과:
   - CSV 1건 추가
-  - 응답 `{status:"logged"}`
+  - 응답 `{status:"logged",id:"a25-76000001"}`
 
 ### 14.2 정상 퇴영 요청
 
@@ -302,14 +305,14 @@ time,type,location,id
 ```json
 {
   "type": "exit",
-  "id": "a25-76000001",
+  "serial": "123456",
   "location": "gate-1"
 }
 ```
 
 - 결과:
   - CSV 1건 추가
-  - 응답 `{status:"logged"}`
+  - 응답 `{status:"logged",id:"a25-76000001"}`
 
 ### 14.3 FE 조회 화면
 
