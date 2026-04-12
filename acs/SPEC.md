@@ -188,9 +188,12 @@ data: {"time":"2026-04-12T14:00:00.0000000Z","type":"entry","location":"gate-1",
 규칙:
 
 - `board.html`만 `/event`에 연결한다.
+- `board.html`은 진입 시 브라우저 Notification 권한을 요청한다.
 - 서버는 연결된 모든 client를 유지한다.
 - 서버는 `POST /access`가 성공적으로 기록된 직후 `access` 이벤트를 브로드캐스트한다.
 - SSE 이벤트는 현황판 갱신 트리거로만 사용하고, 실제 조회 데이터는 계속 `list.json`, `location.json`, `logs/access-log.csv`를 다시 읽어 계산한다.
+- `board.html`은 Notification 권한이 `granted`일 때 `entry` 이벤트면 `입영`, `exit` 이벤트면 `퇴영` 제목으로 시스템 알림을 띄운다.
+- Notification 본문은 `이름 / 위치` 형식을 사용하고, 이름이 없으면 `id / 위치`를 사용한다.
 
 ### 8.3 입퇴영 요청
 
@@ -247,9 +250,10 @@ Content-Type: application/json
 ### 9.3 `GET /event`
 
 1. 현황판 FE가 `/event`에 연결한다.
-2. 서버가 SSE 응답을 연 상태로 client를 목록에 보관한다.
-3. 이후 access 기록이 성공할 때마다 서버가 `access` 이벤트를 보낸다.
-4. 현황판 FE는 이벤트를 받으면 정적 JSON/CSV를 다시 읽어 화면을 갱신한다.
+2. 현황판 FE가 브라우저 Notification 권한을 요청한다.
+3. 서버가 SSE 응답을 연 상태로 client를 목록에 보관한다.
+4. 이후 access 기록이 성공할 때마다 서버가 `access` 이벤트를 보낸다.
+5. 현황판 FE는 이벤트를 받으면 Notification을 띄우고, 정적 JSON/CSV를 다시 읽어 화면을 갱신한다.
 
 ---
 
@@ -280,6 +284,8 @@ time,type,location,id
 - FE는 CSV 전체에서 군번별 마지막 로그 1건을 계산한다.
 - FE는 `board.html` 최초 진입 시 1회 로그를 읽는다.
 - FE는 `/event`의 `access` 이벤트를 받으면 JSON/CSV를 다시 읽어 화면을 갱신한다.
+- FE는 `board.html` 진입 시 Notification 권한이 `default`면 권한 요청을 보낸다.
+- FE는 Notification 권한이 `granted`일 때만 `입영`/`퇴영` 시스템 알림을 띄운다.
 - `전체` 모드에서는 각 행의 `time`을 KST 기준 날짜로 변환한다.
 - `전체` 모드에서는 선택한 날짜의 로그만 화면에 남긴다.
 - `전체` 모드에서는 군번, 이름, 위치 기준 검색을 수행한다.

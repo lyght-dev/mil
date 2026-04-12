@@ -616,3 +616,21 @@
 - `curl -N http://127.0.0.1:8888/event` 연결 시 `: connected` 수신 확인.
 - `curl -sS -X POST http://127.0.0.1:8888/access -H 'Content-Type: application/json' --data '{"type":"exit","serial":"123456","location":"gate-1"}'` 응답 `{ "status": "logged", "id": "a25-76000001" }` 확인.
 - 같은 SSE 연결에서 `event: access`와 `data: {"type":"exit","id":"a25-76000001","location":"gate-1","time":"..."}` 수신 확인.
+
+### 추가 작업 요약 (SSE 수신 시 Notification 표시)
+- `acs/script.js`의 현황판 초기화에서 브라우저 Notification API 지원 여부를 확인하고, 권한 상태가 `default`면 진입 시 즉시 권한을 요청하도록 추가함.
+- `board.html`의 `/event` SSE 수신 시 payload를 파싱해 `entry`면 `입영`, `exit`면 `퇴영` 제목의 시스템 알림을 띄우도록 추가함.
+- Notification 본문은 `이름 / 위치` 형식을 사용하고, 이름 캐시가 없으면 `id / 위치`로 대체하도록 구현함.
+- Notification 미지원 브라우저, `denied` 상태, 알림 생성 예외는 모두 조용히 무시하도록 최소 보호만 둠.
+- `acs/SPEC.md`에 현황판 Notification 권한 요청과 알림 규칙을 반영함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/acs/script.js` 재통과.
+- `rg -n "Notification|requestBoardNotificationPermission|notifyAccessEvent|new Notification" /workspaces/mil/acs/script.js`로 권한 요청/알림 생성 경로 반영 확인.
+
+### 추가 작업 요약 (문자열 기본값 유틸 정리)
+- `acs/script.js`에 `const toText = (value, fallback = "") => String(value || fallback);` 유틸을 추가함.
+- 기존 `String(... || "")`, `String(... || "-")` 패턴을 `toText(...)`, `toText(..., "-")`로 치환해 문자열 기본값 처리를 한 곳으로 모음.
+
+### 추가 검증 메모
+- `rg -n "String\\([^\\n]*\\|\\| \\\"\\\"\\)|String\\([^\\n]*\\|\\| \\\"-\\\"\\)" /workspaces/mil/acs/script.js` 결과 남은 직접 패턴 없음 확인.

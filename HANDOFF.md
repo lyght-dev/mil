@@ -1232,3 +1232,21 @@
 - `pwsh -NoLogo -NoProfile -Command "[System.Management.Automation.Language.Parser]::ParseFile('/workspaces/mil/acs/server.ps1',[ref]$null,[ref]$null) | Out-Null; 'PARSE_OK'"` 결과 `PARSE_OK` 확인.
 - `node --check /workspaces/mil/acs/script.js` 통과.
 - 임시 복사본(`/tmp/acs-sse-test`)에서 `pwsh -NoLogo -NoProfile -File ./server.ps1`, `curl -N http://127.0.0.1:8888/event`, `curl -sS -X POST http://127.0.0.1:8888/access ...` 조합으로 SSE `access` 수신까지 확인.
+
+### 추가 작업 요약 (acs SSE 수신 Notification 추가)
+- `acs/script.js`에서 현황판 진입 시 브라우저 Notification 권한 상태가 `default`면 즉시 권한을 요청하도록 추가함.
+- `/event`의 `access` SSE 수신 시 payload를 읽어 `entry`는 `입영`, `exit`는 `퇴영` 제목의 시스템 Notification을 띄우도록 추가함.
+- Notification 본문은 `이름 / 위치` 형식을 사용하고, 이름이 없으면 `id / 위치`로 대체하도록 구현함.
+- Notification 미지원/비허용 상태에서는 기존 현황판 갱신 흐름만 유지하도록 최소 보호만 둠.
+- `acs/SPEC.md`, `acs/HANDOFF.md`에 관련 규칙과 인계 메모를 추가함.
+
+### 추가 검증 메모
+- `node --check /workspaces/mil/acs/script.js` 재통과.
+- `rg -n "Notification|requestBoardNotificationPermission|notifyAccessEvent|new Notification" /workspaces/mil/acs/script.js`로 권한 요청/알림 코드 반영 확인.
+
+### 추가 작업 요약 (acs 문자열 기본값 유틸 정리)
+- `acs/script.js`에 `toText(value, fallback)` 유틸을 추가하고, 기존 `String(... || "")` 계열 패턴을 이 유틸로 치환함.
+- Notification payload 파싱, SSE 데이터 처리, 로그 렌더링, 멤버/위치 문자열 정규화가 모두 같은 경로를 사용하도록 정리함.
+
+### 추가 검증 메모
+- `rg -n "String\\([^\\n]*\\|\\| \\\"\\\"\\)|String\\([^\\n]*\\|\\| \\\"-\\\"\\)" /workspaces/mil/acs/script.js` 결과 남은 직접 패턴 없음 확인.

@@ -2,6 +2,7 @@ const DUPLICATE_WINDOW_MS = 15000;
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
 const $ = id => document.getElementById(id);
+const toText = (value, fallback = "") => String(value || fallback);
 
 let boardLogs = [];
 let currentStatusById = new Map();
@@ -68,7 +69,7 @@ const normalizeLocations = items => {
 
   return items
     .map(item => {
-      const location = String(item?.location || "").trim();
+      const location = toText(item?.location).trim();
       if (!location) return null;
       return { location };
     })
@@ -85,13 +86,13 @@ const normalizeMembers = items => {
 
   return items
     .map(item => {
-      const id = String(item?.id || "").trim();
+      const id = toText(item?.id).trim();
       if (!id) return null;
 
       return {
         id,
-        name: String(item?.name || "").trim(),
-        unit: String(item?.unit || "").trim()
+        name: toText(item?.name).trim(),
+        unit: toText(item?.unit).trim()
       };
     })
     .filter(Boolean);
@@ -102,13 +103,44 @@ const setAllowedMembers = items => {
   allowedMemberById = new Map(allowedMembers.map(item => [item.id, item]));
 };
 
-const isConfiguredLocation = value => configuredLocationSet.has(String(value || ""));
-const getMember = id => allowedMemberById.get(String(id || "")) || null;
+const isConfiguredLocation = value => configuredLocationSet.has(toText(value));
+const getMember = id => allowedMemberById.get(toText(id)) || null;
 const getMemberName = id => getMember(id)?.name || "";
 const getMemberLabel = id => {
   const member = getMember(id);
-  if (!member?.name) return String(id || "-");
-  return `${String(id || "-")} / ${member.name}`;
+  if (!member?.name) return toText(id, "-");
+  return `${toText(id, "-")} / ${member.name}`;
+};
+
+const canUseNotification = () => typeof window !== "undefined" && "Notification" in window;
+
+const requestBoardNotificationPermission = async () => {
+  if (!canUseNotification()) return;
+  if (Notification.permission !== "default") return;
+
+  try {
+    await Notification.requestPermission();
+  } catch {
+  }
+};
+
+const notifyAccessEvent = eventData => {
+  if (!canUseNotification()) return;
+  if (Notification.permission !== "granted") return;
+
+  const type = toText(eventData?.type).trim();
+  const id = toText(eventData?.id).trim();
+  const location = toText(eventData?.location).trim();
+  if (type !== "entry" && type !== "exit") return;
+
+  const title = type === "entry" ? "입영" : "퇴영";
+  const name = getMemberName(id) || id || "-";
+  const body = `${name} / ${location || "-"}`;
+
+  try {
+    new Notification(title, { body });
+  } catch {
+  }
 };
 
 const focusBarcodeInput = () => {
@@ -125,7 +157,7 @@ const focusBarcodeInput = () => {
 };
 
 const parseBarcode = rawValue => {
-  const value = String(rawValue || "").replace(/\r/g, "").replace(/\n/g, "").trim();
+  const value = toText(rawValue).replace(/\r/g, "").replace(/\n/g, "").trim();
   const upper = value.slice(0, 2).toUpperCase();
   const serial = value.slice(2).trim();
 
@@ -136,7 +168,7 @@ const parseBarcode = rawValue => {
   return { ok: false, message: "지원하지 않는 바코드입니다." };
 };
 
-const getDuplicateKey = (location, rawBarcode) => `${String(location || "")}|${String(rawBarcode || "")}`;
+const getDuplicateKey = (location, rawBarcode) => `${toText(location)}|${toText(rawBarcode)}`;
 
 const shouldIgnoreDuplicate = (location, rawBarcode) => {
   const lastAt = recentScans[getDuplicateKey(location, rawBarcode)];
@@ -234,26 +266,26 @@ const getKstDay = value => {
 
 const formatLogTime = value => {
   const parts = getKstDateParts(value);
-  if (!parts) return String(value || "-");
+  if (!parts) return toText(value, "-");
 
   return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`;
 };
 
 const parseAccessLogLine = line => {
-  const values = String(line || "").split(",");
+  const values = toText(line).split(",");
   if (values.length < 4) return null;
 
-  const time = String(values[0] || "").trim();
-  const type = String(values[1] || "").trim();
-  const location = String(values[2] || "").trim();
-  const id = String(values[3] || "").trim();
+  const time = toText(values[0]).trim();
+  const type = toText(values[1]).trim();
+  const location = toText(values[2]).trim();
+  const id = toText(values[3]).trim();
 
   if (!time || !type || !location || !id) return null;
   return { time, type, location, id };
 };
 
 const parseAccessLogsCsv = text => {
-  const rows = String(text || "").replace(/\r/g, "").split("\n");
+  const rows = toText(text).replace(/\r/g, "").split("\n");
   const items = [];
 
   for (const row of rows) {
@@ -272,18 +304,18 @@ const parseAccessLogsCsv = text => {
 const buildCurrentStatusById = items => {
   const next = new Map();
   const sorted = Array.isArray(items)
-    ? [...items].sort((left, right) => String(left?.time || "").localeCompare(String(right?.time || "")))
+    ? [...items].sort((left, right) => toText(left?.time).localeCompare(toText(right?.time)))
     : [];
 
   for (const item of sorted) {
-    const id = String(item?.id || "").trim();
-    const type = String(item?.type || "").trim();
+    const id = toText(item?.id).trim();
+    const type = toText(item?.type).trim();
     if (!id || !type) continue;
     next.set(id, {
       id,
       type,
-      location: String(item?.location || "").trim(),
-      time: String(item?.time || "").trim()
+      location: toText(item?.location).trim(),
+      time: toText(item?.time).trim()
     });
   }
 
@@ -315,7 +347,7 @@ const showDuplicateResult = ({ type, id }) => {
 
 const showAccessResult = ({ type, id, name }) => {
   const action = type === "entry" ? "입영" : "퇴영";
-  const label = String(name || "").trim() || String(id || "-");
+  const label = toText(name).trim() || toText(id, "-");
   showMessage(`${label}님 ${action}입니다`, "ok");
 };
 
@@ -369,7 +401,7 @@ const openLocationDialog = () => {
 };
 
 const activateScannerLocation = location => {
-  scannerLocation = String(location || "").trim();
+  scannerLocation = toText(location).trim();
 
   const locationPanel = $("loc-pnl");
   const scannerPanel = $("scan-pnl");
@@ -431,13 +463,13 @@ const renderCurrentList = () => {
       if (!targetType || item?.type !== targetType) return false;
       if (!query) return true;
 
-      const id = String(item?.id || "").toLowerCase();
+      const id = toText(item?.id).toLowerCase();
       const name = getMemberName(item?.id).toLowerCase();
-      const location = String(item?.location || "").toLowerCase();
+      const location = toText(item?.location).toLowerCase();
       return id.includes(query) || name.includes(query) || location.includes(query);
     })
     .sort((left, right) => {
-      const diff = String(left?.time || "").localeCompare(String(right?.time || ""));
+      const diff = toText(left?.time).localeCompare(toText(right?.time));
       return order === "asc" ? diff : diff * -1;
     });
 
@@ -454,9 +486,9 @@ const renderCurrentList = () => {
   for (const item of items) {
     const row = createElement("tr");
 
-    row.appendChild(createElement("td", "", String(item?.id || "-")));
+    row.appendChild(createElement("td", "", toText(item?.id, "-")));
     row.appendChild(createElement("td", "", getMemberName(item?.id) || "-"));
-    row.appendChild(createElement("td", "", String(item?.location || "-")));
+    row.appendChild(createElement("td", "", toText(item?.location, "-")));
     row.appendChild(createElement("td", "", formatLogTime(item?.time)));
     frag.appendChild(row);
   }
@@ -477,13 +509,13 @@ const renderLogs = () => {
       if (getKstDay(item?.time) !== day) return false;
       if (!query) return true;
 
-      const id = String(item?.id || "").toLowerCase();
+      const id = toText(item?.id).toLowerCase();
       const name = getMemberName(item?.id).toLowerCase();
-      const location = String(item?.location || "").toLowerCase();
+      const location = toText(item?.location).toLowerCase();
       return id.includes(query) || name.includes(query) || location.includes(query);
     })
     .sort((left, right) => {
-      const diff = String(left?.time || "").localeCompare(String(right?.time || ""));
+      const diff = toText(left?.time).localeCompare(toText(right?.time));
       return order === "asc" ? diff : diff * -1;
     });
 
@@ -502,8 +534,8 @@ const renderLogs = () => {
 
     row.appendChild(createElement("td", "", formatLogTime(item?.time)));
     row.appendChild(createElement("td", "", item?.type === "entry" ? "입영" : "퇴영"));
-    row.appendChild(createElement("td", "", String(item?.location || "-")));
-    row.appendChild(createElement("td", "", String(item?.id || "-")));
+    row.appendChild(createElement("td", "", toText(item?.location, "-")));
+    row.appendChild(createElement("td", "", toText(item?.id, "-")));
     row.appendChild(createElement("td", "", getMemberName(item?.id) || "-"));
     frag.appendChild(row);
   }
@@ -577,7 +609,12 @@ const initBoardEvents = () => {
   if (boardEventSource) boardEventSource.close();
 
   boardEventSource = new EventSource("/event");
-  boardEventSource.addEventListener("access", () => {
+  boardEventSource.addEventListener("access", event => {
+    try {
+      notifyAccessEvent(JSON.parse(toText(event?.data)));
+    } catch {
+    }
+
     void refreshLogs();
   });
   boardEventSource.onerror = () => {
@@ -606,7 +643,7 @@ const submitAccess = async () => {
   try {
     const { type, serial, raw } = parsed;
     const result = await postAccess({ type, serial, location });
-    const id = String(result?.id || "").trim();
+    const id = toText(result?.id).trim();
 
     if (!id) throw new Error("응답에 id가 없습니다.");
 
@@ -728,6 +765,7 @@ const initBoardPage = () => {
   if (sortInput) sortInput.addEventListener("change", () => renderBoard());
 
   void loadMembers().catch(() => null);
+  void requestBoardNotificationPermission();
   syncBoardControls();
   void refreshLogs();
   initBoardEvents();
