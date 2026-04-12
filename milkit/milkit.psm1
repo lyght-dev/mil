@@ -82,6 +82,8 @@ function Get-ContentTypeByPath {
         '.jpeg' { return 'image/jpeg' }
         '.gif' { return 'image/gif' }
         '.ico' { return 'image/x-icon' }
+        '.woff' { return 'font/woff' }
+        '.woff2' { return 'font/woff2' }
         default { return 'application/octet-stream' }
     }
 }

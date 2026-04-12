@@ -9,6 +9,9 @@ $baseUrl = "http://$hostName`:$port"
 $publicRoot = Join-Path $PSScriptRoot 'smoke-public'
 New-Item -ItemType Directory -Path $publicRoot -Force | Out-Null
 Set-Content -Path (Join-Path $publicRoot 'index.html') -Value 'SMOKE_STATIC' -Encoding utf8
+Set-Content -Path (Join-Path $publicRoot 'shape.svg') -Value '<svg xmlns="http://www.w3.org/2000/svg"></svg>' -Encoding utf8
+[System.IO.File]::WriteAllBytes((Join-Path $publicRoot 'pixel.png'), [byte[]](0,1,2,3))
+[System.IO.File]::WriteAllBytes((Join-Path $publicRoot 'font.woff2'), [byte[]](0,1,2,3))
 
 $job = Start-Job -ScriptBlock {
     param($modulePath, $rootPath, $port)
@@ -132,6 +135,9 @@ try {
     Assert-Eq -Name 'middleware return' -Actual (Get-Json -Url "$baseUrl/mw-return").source -Expected 'middleware'
     Assert-Eq -Name 'explicit ok' -Actual (Get-Json -Url "$baseUrl/explicit").explicit -Expected $true
     Assert-Eq -Name 'static index' -Actual (Invoke-WebRequest -Uri "$baseUrl/public" -UseBasicParsing).Content.Trim() -Expected 'SMOKE_STATIC'
+    Assert-Eq -Name 'static svg content-type' -Actual (Invoke-WebRequest -Uri "$baseUrl/public/shape.svg" -UseBasicParsing).Headers['Content-Type'] -Expected 'image/svg+xml'
+    Assert-Eq -Name 'static png content-type' -Actual (Invoke-WebRequest -Uri "$baseUrl/public/pixel.png" -UseBasicParsing).Headers['Content-Type'] -Expected 'image/png'
+    Assert-Eq -Name 'static woff2 content-type' -Actual (Invoke-WebRequest -Uri "$baseUrl/public/font.woff2" -UseBasicParsing).Headers['Content-Type'] -Expected 'font/woff2'
     Assert-Eq -Name 'not found handler' -Actual (Get-Json -Url "$baseUrl/missing").kind -Expected 'notfound'
     Assert-Eq -Name 'error handler' -Actual (Get-Json -Url "$baseUrl/boom").kind -Expected 'error'
 
