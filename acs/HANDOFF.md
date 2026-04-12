@@ -1,5 +1,29 @@
 # HANDOFF
 
+## 2026-04-12
+
+### 작업 요약
+- `acs/style.css` 상단에 `PretendardJP` `@font-face` 4개를 추가함.
+  - `Regular(400)`, `SemiBold(600)`, `Bold(700)`, `ExtraBold(800)`를 `/public/PretendardJP-*.woff2` 경로로 등록함.
+  - `body` 기본 폰트를 fallback 없이 `font-family: "PretendardJP";`로 변경함.
+- `acs/server.ps1`에 `.woff2` Content-Type(`font/woff2`)을 추가함.
+- `acs/server.ps1` 정적 라우팅에 아래 폰트 경로 4개를 추가함.
+  - `/public/PretendardJP-Regular.woff2`
+  - `/public/PretendardJP-SemiBold.woff2`
+  - `/public/PretendardJP-Bold.woff2`
+  - `/public/PretendardJP-ExtraBold.woff2`
+- `acs/SPEC.md`에 정적 폰트 파일 서빙과 `PretendardJP` 사용 규칙을 반영함.
+
+### 다음 세션 인계 포인트
+- 현재 워크스페이스에는 `acs/public/PretendardJP-*.woff2` 실제 파일이 아직 없다.
+- 코드와 정적 라우팅은 준비됐지만, 실제 폰트 파일이 배치되기 전까지 해당 URL은 `Missing file`로 실패한다.
+- 폰트 적용 최종 확인을 하려면 위 4개 `.woff2` 파일을 `acs/public/` 아래에 추가한 뒤 서버를 재시작해야 한다.
+
+### 검증 내역
+- `pwsh -NoLogo -NoProfile -Command "[void][scriptblock]::Create((Get-Content -LiteralPath '/workspaces/mil/acs/server.ps1' -Raw)); 'PARSE_OK'"`
+- `find /workspaces/mil -type f | rg 'PretendardJP-.*\\.woff2$'`로 현재 폰트 자산 부재 확인
+- `git diff -- acs/style.css acs/server.ps1 acs/SPEC.md acs/HANDOFF.md`로 반영 내용 확인
+
 ## 2026-03-26
 
 ### 작업 요약

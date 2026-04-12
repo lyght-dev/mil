@@ -1,3 +1,31 @@
+@font-face {
+  font-family: "PretendardJP";
+  src: url("/public/PretendardJP-Regular.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+}
+
+@font-face {
+  font-family: "PretendardJP";
+  src: url("/public/PretendardJP-SemiBold.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 600;
+}
+
+@font-face {
+  font-family: "PretendardJP";
+  src: url("/public/PretendardJP-Bold.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 700;
+}
+
+@font-face {
+  font-family: "PretendardJP";
+  src: url("/public/PretendardJP-ExtraBold.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 800;
+}
+
 :root {
   --bg: #eef4fd;
   --panel: #ffffff;
@@ -19,7 +47,7 @@
 
 body {
   margin: 0;
-  font-family: "Noto Sans KR", "Malgun Gothic", sans-serif;
+  font-family: "PretendardJP";
   color: var(--ink);
   background: var(--bg);
   min-height: 100vh;

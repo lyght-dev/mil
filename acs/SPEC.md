@@ -44,6 +44,7 @@ ACS의 목적은 다음과 같다.
 
 - 중앙 HTTP 서버 1개 실행
 - 정적 웹 파일 서빙(`index.html`, `board.html`, `setting.html`, `script.js`, `style.css`, `setting.css`, `setting.js`)
+- 정적 폰트 파일 서빙(`public/PretendardJP-Regular.woff2`, `public/PretendardJP-SemiBold.woff2`, `public/PretendardJP-Bold.woff2`, `public/PretendardJP-ExtraBold.woff2`)
 - 정적 데이터 파일 서빙(`list.json`, `location.json`, `logs/access-log.csv`)
 - 입퇴영 요청 수신
 - `list.json` 기반 허용 군번 검증
@@ -144,6 +145,10 @@ GET /script.js
 GET /style.css
 GET /setting.css
 GET /setting.js
+GET /public/PretendardJP-Regular.woff2
+GET /public/PretendardJP-SemiBold.woff2
+GET /public/PretendardJP-Bold.woff2
+GET /public/PretendardJP-ExtraBold.woff2
 GET /list.json
 GET /location.json
 GET /logs/access-log.csv
@@ -156,6 +161,7 @@ POST /setting/member/reissue
 규칙:
 
 - 서버는 위 파일을 그대로 서빙한다.
+- `style.css`는 `PretendardJP`를 단일 `font-family`로 사용하고, `Regular(400)`, `SemiBold(600)`, `Bold(700)`, `ExtraBold(800)`를 `/public/*.woff2`에서 읽는다.
 - FE는 `list.json`, `location.json`, `logs/access-log.csv`를 직접 읽어 필요한 가공을 수행한다.
 - `logs/access-log.csv`는 원본 CSV 전체를 그대로 내려준다.
 - `setting.html`은 CRUD UI 렌더/검색/재조회와 CRUD API 호출까지 수행한다.

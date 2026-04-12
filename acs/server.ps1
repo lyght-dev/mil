@@ -19,6 +19,7 @@ function Get-ContentType {
         ".css" { return "text/css; charset=utf-8" }
         ".json" { return "application/json; charset=utf-8" }
         ".csv" { return "text/csv; charset=utf-8" }
+        ".woff2" { return "font/woff2" }
         default { return "application/octet-stream" }
     }
 }
@@ -526,6 +527,10 @@ function Invoke-StaticResourceRoute {
         "/list.json" { "list.json" }
         "/location.json" { "location.json" }
         "/logs/access-log.csv" { "logs/access-log.csv" }
+        "/public/PretendardJP-Regular.woff2" { "public/PretendardJP-Regular.woff2" }
+        "/public/PretendardJP-SemiBold.woff2" { "public/PretendardJP-SemiBold.woff2" }
+        "/public/PretendardJP-Bold.woff2" { "public/PretendardJP-Bold.woff2" }
+        "/public/PretendardJP-ExtraBold.woff2" { "public/PretendardJP-ExtraBold.woff2" }
         default { $null }
     }
 
