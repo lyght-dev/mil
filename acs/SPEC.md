@@ -10,7 +10,7 @@ ACS는 군부대 장병의 입영 및 퇴영 기록을 중앙에서 수집하고
 - 각 gate의 client가 바코드를 읽고 입영/퇴영을 판별한다.
 - client가 `type`, `serial`, `location`을 서버로 전송한다.
 - 서버는 요청을 신뢰하고 로그 기록과 정적 파일 서빙만 담당한다.
-- 조회 가공은 브라우저가 `list.json`, `location.json`, `logs/access-log.csv`를 직접 읽어 처리한다.
+- 조회 가공은 브라우저가 `public/list.json`, `public/location.json`, `logs/access-log.csv`를 직접 읽어 처리한다.
 
 ---
 
@@ -43,9 +43,9 @@ ACS의 목적은 다음과 같다.
 ### 4.1 현재 단계 포함 범위
 
 - 중앙 HTTP 서버 1개 실행
-- 정적 웹 파일 서빙(`index.html`, `board.html`, `setting.html`, `script.js`, `style.css`, `setting.css`, `setting.js`)
+- 정적 웹 파일 서빙(`public/index.html`, `public/board.html`, `public/setting.html`, `public/script.js`, `public/style.css`, `public/setting.css`, `public/setting.js`)
 - 정적 폰트 파일 서빙(`public/PretendardJP-Regular.woff2`, `public/PretendardJP-SemiBold.woff2`, `public/PretendardJP-Bold.woff2`, `public/PretendardJP-ExtraBold.woff2`)
-- 정적 데이터 파일 서빙(`list.json`, `location.json`, `logs/access-log.csv`)
+- 정적 데이터 파일 서빙(`public/list.json`, `public/location.json`, `logs/access-log.csv`)
 - 입퇴영 요청 수신
 - SSE 연결 수신(`GET /event`)
 - `list.json` 기반 허용 군번 검증
@@ -142,19 +142,21 @@ ACS의 목적은 다음과 같다.
 ### 8.1 정적 리소스
 
 ```text
-GET /index.html
-GET /board.html
-GET /setting.html
-GET /script.js
-GET /style.css
-GET /setting.css
-GET /setting.js
+GET /
+GET /public
+GET /public/index.html
+GET /public/board.html
+GET /public/setting.html
+GET /public/script.js
+GET /public/style.css
+GET /public/setting.css
+GET /public/setting.js
 GET /public/PretendardJP-Regular.woff2
 GET /public/PretendardJP-SemiBold.woff2
 GET /public/PretendardJP-Bold.woff2
 GET /public/PretendardJP-ExtraBold.woff2
-GET /list.json
-GET /location.json
+GET /public/list.json
+GET /public/location.json
 GET /logs/access-log.csv
 GET /event
 POST /setting/member/create
@@ -165,9 +167,9 @@ POST /setting/member/reissue
 
 규칙:
 
-- 서버는 위 파일을 그대로 서빙한다.
+- 서버는 `/`에서 `public/index.html`을 응답하고, 나머지 정적 리소스는 `/public/*` 아래에서 서빙한다.
 - `style.css`는 `PretendardJP`를 단일 `font-family`로 사용하고, `Regular(400)`, `SemiBold(600)`, `Bold(700)`, `ExtraBold(800)`를 `/public/*.woff2`에서 읽는다.
-- FE는 `list.json`, `location.json`, `logs/access-log.csv`를 직접 읽어 필요한 가공을 수행한다.
+- FE는 `public/list.json`, `public/location.json`, `logs/access-log.csv`를 직접 읽어 필요한 가공을 수행한다.
 - `logs/access-log.csv`는 원본 CSV 전체를 그대로 내려준다.
 - `setting.html`은 CRUD UI 렌더/검색/재조회와 CRUD API 호출까지 수행한다.
 
@@ -191,7 +193,7 @@ data: {"time":"2026-04-12T14:00:00.0000000Z","type":"entry","location":"gate-1",
 - `board.html`은 진입 시 브라우저 Notification 권한을 요청한다.
 - 서버는 연결된 모든 client를 유지한다.
 - 서버는 `POST /access`가 성공적으로 기록된 직후 `access` 이벤트를 브로드캐스트한다.
-- SSE 이벤트는 현황판 갱신 트리거로만 사용하고, 실제 조회 데이터는 계속 `list.json`, `location.json`, `logs/access-log.csv`를 다시 읽어 계산한다.
+- SSE 이벤트는 현황판 갱신 트리거로만 사용하고, 실제 조회 데이터는 계속 `public/list.json`, `public/location.json`, `logs/access-log.csv`를 다시 읽어 계산한다.
 - `board.html`은 Notification 권한이 `granted`일 때 `entry` 이벤트면 `입영`, `exit` 이벤트면 `퇴영` 제목으로 시스템 알림을 띄운다.
 - Notification 본문은 `이름 / 위치` 형식을 사용하고, 이름이 없으면 `id / 위치`를 사용한다.
 

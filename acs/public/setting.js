@@ -314,7 +314,7 @@
   };
 
   const reloadAllowedMembers = async () => {
-    const data = await fetchJson(`/list.json?ts=${Date.now()}`, { cache: "no-store" });
+    const data = await fetchJson(`/public/list.json?ts=${Date.now()}`, { cache: "no-store" });
     setAllowedMembers(data);
   };
 

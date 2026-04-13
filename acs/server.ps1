@@ -641,16 +641,17 @@ function Invoke-StaticResourceRoute {
     }
 
     $relativePath = switch ($path) {
-        "/" { "index.html" }
-        "/index.html" { "index.html" }
-        "/board.html" { "board.html" }
-        "/setting.html" { "setting.html" }
-        "/script.js" { "script.js" }
-        "/style.css" { "style.css" }
-        "/setting.css" { "setting.css" }
-        "/setting.js" { "setting.js" }
-        "/list.json" { "list.json" }
-        "/location.json" { "location.json" }
+        "/" { "public/index.html" }
+        "/public" { "public/index.html" }
+        "/public/index.html" { "public/index.html" }
+        "/public/board.html" { "public/board.html" }
+        "/public/setting.html" { "public/setting.html" }
+        "/public/script.js" { "public/script.js" }
+        "/public/style.css" { "public/style.css" }
+        "/public/setting.css" { "public/setting.css" }
+        "/public/setting.js" { "public/setting.js" }
+        "/public/list.json" { "public/list.json" }
+        "/public/location.json" { "public/location.json" }
         "/logs/access-log.csv" { "logs/access-log.csv" }
         "/public/PretendardJP-Regular.woff2" { "public/PretendardJP-Regular.woff2" }
         "/public/PretendardJP-SemiBold.woff2" { "public/PretendardJP-SemiBold.woff2" }
@@ -795,7 +796,7 @@ function Invoke-Request {
 function Start-AcsServer {
     $script:AppRoot = if ([string]::IsNullOrWhiteSpace($PSScriptRoot)) { (Get-Location).Path } else { $PSScriptRoot }
     $script:LogPath = Join-Path $script:AppRoot "logs/access-log.csv"
-    $script:ListPath = Join-Path $script:AppRoot "list.json"
+    $script:ListPath = Join-Path $script:AppRoot "public/list.json"
     $membersData = Import-Members
     $script:AllowedIds = $membersData.AllowedIds
     $script:SerialToMember = $membersData.SerialToMember

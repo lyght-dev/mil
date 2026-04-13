@@ -641,36 +641,7 @@ function Invoke-AccessRoute {
 function Invoke-RootRoute {
     param($req, $res)
 
-    Send-TextFile -Response $res -RelativePath 'index.html' -ContentType 'text/html; charset=utf-8'
-}
-
-function Invoke-LogFileRoute {
-    param($req, $res)
-
-    Send-TextFile -Response $res -RelativePath 'logs/access-log.csv' -ContentType 'text/csv; charset=utf-8'
-}
-
-function Add-TextFileRoute {
-    param(
-        [Parameter(Mandatory = $true)]
-        [psobject]$App,
-
-        [Parameter(Mandatory = $true)]
-        [string]$RoutePath,
-
-        [Parameter(Mandatory = $true)]
-        [string]$RelativePath,
-
-        [Parameter(Mandatory = $true)]
-        [string]$ContentType
-    )
-
-    $handler = {
-        param($req, $res)
-        Send-TextFile -Response $res -RelativePath $RelativePath -ContentType $ContentType
-    }.GetNewClosure()
-
-    Add-Route $App GET $RoutePath $handler
+    Send-TextFile -Response $res -RelativePath 'public/index.html' -ContentType 'text/html; charset=utf-8'
 }
 
 function Register-StaticRoutes {
@@ -679,16 +650,8 @@ function Register-StaticRoutes {
         [psobject]$App
     )
 
-    Add-TextFileRoute -App $App -RoutePath '/index.html' -RelativePath 'index.html' -ContentType 'text/html; charset=utf-8'
-    Add-TextFileRoute -App $App -RoutePath '/board.html' -RelativePath 'board.html' -ContentType 'text/html; charset=utf-8'
-    Add-TextFileRoute -App $App -RoutePath '/setting.html' -RelativePath 'setting.html' -ContentType 'text/html; charset=utf-8'
-    Add-TextFileRoute -App $App -RoutePath '/script.js' -RelativePath 'script.js' -ContentType 'application/javascript; charset=utf-8'
-    Add-TextFileRoute -App $App -RoutePath '/style.css' -RelativePath 'style.css' -ContentType 'text/css; charset=utf-8'
-    Add-TextFileRoute -App $App -RoutePath '/setting.css' -RelativePath 'setting.css' -ContentType 'text/css; charset=utf-8'
-    Add-TextFileRoute -App $App -RoutePath '/setting.js' -RelativePath 'setting.js' -ContentType 'application/javascript; charset=utf-8'
-    Add-TextFileRoute -App $App -RoutePath '/list.json' -RelativePath 'list.json' -ContentType 'application/json; charset=utf-8'
-    Add-TextFileRoute -App $App -RoutePath '/location.json' -RelativePath 'location.json' -ContentType 'application/json; charset=utf-8'
     Use-Static $App '/public' './public'
+    Use-Static $App '/logs' './logs'
 }
 
 function New-AcsApp {
@@ -697,7 +660,6 @@ function New-AcsApp {
     Register-StaticRoutes -App $app
 
     Add-Route $app GET '/' ${function:Invoke-RootRoute}
-    Add-Route $app GET '/logs/access-log.csv' ${function:Invoke-LogFileRoute}
     Add-Route $app GET '/event' ${function:Invoke-EventRoute}
     Add-Route $app POST '/access' ${function:Invoke-AccessRoute}
     Add-Route $app POST '/setting/member/create' ${function:Invoke-CreateMemberRoute}
@@ -733,7 +695,7 @@ function New-AcsApp {
 function Start-AcsApp {
     $script:AppRoot = if (Test-Blank $PSScriptRoot) { (Get-Location).Path } else { $PSScriptRoot }
     $script:LogPath = Join-Path $script:AppRoot 'logs/access-log.csv'
-    $script:ListPath = Join-Path $script:AppRoot 'list.json'
+    $script:ListPath = Join-Path $script:AppRoot 'public/list.json'
     $membersData = Import-Members
     $script:AllowedIds = $membersData.AllowedIds
     $script:SerialToMember = $membersData.SerialToMember

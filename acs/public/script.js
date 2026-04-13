@@ -181,8 +181,8 @@ const markRecentScan = (location, rawBarcode) => {
   recentScans[getDuplicateKey(location, rawBarcode)] = Date.now();
 };
 
-const fetchLocations = () => fetchJson("/location.json");
-const fetchMembers = () => fetchJson("/list.json");
+const fetchLocations = () => fetchJson("/public/location.json");
+const fetchMembers = () => fetchJson("/public/list.json");
 const fetchLogsCsv = () => fetchText(`/logs/access-log.csv?ts=${Date.now()}`, { cache: "no-store" });
 
 const loadLocations = () => {

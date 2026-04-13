@@ -75,6 +75,7 @@ function Get-ContentTypeByPath {
         '.css' { return 'text/css; charset=utf-8' }
         '.js' { return 'application/javascript; charset=utf-8' }
         '.json' { return 'application/json; charset=utf-8' }
+        '.csv' { return 'text/csv; charset=utf-8' }
         '.txt' { return 'text/plain; charset=utf-8' }
         '.svg' { return 'image/svg+xml' }
         '.png' { return 'image/png' }
