@@ -80,12 +80,19 @@ function Read-JsonPayload {
     )
 
     try {
-        return ($Request.BodyText | ConvertFrom-Json)
+        $payload = $Request.Json()
     }
     catch {
         Send-RejectedResponse -Response $Response -Message 'invalid json'
         return $null
     }
+
+    if ($null -eq $payload) {
+        Send-RejectedResponse -Response $Response -Message 'request body is required'
+        return $null
+    }
+
+    return $payload
 }
 
 function Import-Members {

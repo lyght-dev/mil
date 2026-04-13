@@ -11,6 +11,7 @@
 - `acs/app.ps1`는 `milkit/milkit.psm1` 기반 대체 엔트리포인트다. HTTP 계약은 `server.ps1`와 같고, 루트 텍스트 자원은 명시 라우트로 응답하고 `/public/*`만 `Use-Static`로 서빙한다.
 - `acs/app.ps1`의 SSE는 `milkit` 응답 wrapper 위에서 `$res.Context.Response`를 직접 다뤄 유지한다. SSE 경로 수정 시 `$res.IsSent` 처리 여부를 함께 확인한다.
 - `GET /logs/access-log.csv`는 `milkit` 기본 content-type 매핑에 `.csv`가 없어 `acs/app.ps1`에서 직접 `text/csv; charset=utf-8`로 응답한다.
+- `acs/app.ps1`의 `Read-JsonPayload`는 직접 `ConvertFrom-Json`하지 않고 `req.Json()`을 사용한다. JSON 파싱 캐시는 `milkit`에 맡기고, ACS 쪽에서는 malformed JSON과 빈 바디만 400으로 거부한다.
 
 ## Open Notes
 
