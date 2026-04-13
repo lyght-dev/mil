@@ -2,6 +2,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 Import-Module (Join-Path (Split-Path -Parent $PSScriptRoot) 'milkit/milkit.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'milkit-utils.psm1') -Force
 
 $script:AppRoot = ''
 $script:LogPath = ''
@@ -103,12 +104,12 @@ function Import-Members {
 
     foreach ($member in $members) {
         $id = Get-StringField -Object $member -Name 'id'
-        if (-not [string]::IsNullOrWhiteSpace($id)) {
+        if (-not (Test-Blank $id)) {
             $allowedIds[$id] = $true
         }
 
         $serial = Get-StringField -Object $member -Name 'serial'
-        if (-not [string]::IsNullOrWhiteSpace($serial)) {
+        if (-not (Test-Blank $serial)) {
             $serialToMember[$serial] = $member
         }
     }
@@ -148,12 +149,12 @@ function Sync-MemberCaches {
 
     foreach ($member in $Members) {
         $id = Get-StringField -Object $member -Name 'id'
-        if (-not [string]::IsNullOrWhiteSpace($id)) {
+        if (-not (Test-Blank $id)) {
             $AllowedIds[$id] = $true
         }
 
         $serial = Get-StringField -Object $member -Name 'serial'
-        if (-not [string]::IsNullOrWhiteSpace($serial)) {
+        if (-not (Test-Blank $serial)) {
             $SerialToMember[$serial] = $member
         }
     }
@@ -212,12 +213,12 @@ function New-MemberSerial {
     $usedSerials = @{}
     foreach ($member in $Members) {
         $id = Get-StringField -Object $member -Name 'id'
-        if (-not [string]::IsNullOrWhiteSpace($ExcludeId) -and $id -eq $ExcludeId) {
+        if (-not (Test-Blank $ExcludeId) -and $id -eq $ExcludeId) {
             continue
         }
 
         $serial = Get-StringField -Object $member -Name 'serial'
-        if ([string]::IsNullOrWhiteSpace($serial)) {
+        if (Test-Blank $serial) {
             continue
         }
 
@@ -244,7 +245,7 @@ function New-AccessLogFile {
     )
 
     $dir = Split-Path -Parent $LogPath
-    if (-not [string]::IsNullOrWhiteSpace($dir) -and -not (Test-Path -LiteralPath $dir)) {
+    if (-not (Test-Blank $dir) -and -not (Test-Path -LiteralPath $dir)) {
         [void](New-Item -ItemType Directory -Path $dir)
     }
 
@@ -433,7 +434,7 @@ function Invoke-CreateMemberRoute {
     $id = Get-StringField -Object $payload -Name 'id'
     $name = Get-StringField -Object $payload -Name 'name'
     $unit = Get-StringField -Object $payload -Name 'unit'
-    if ([string]::IsNullOrWhiteSpace($id) -or [string]::IsNullOrWhiteSpace($name) -or [string]::IsNullOrWhiteSpace($unit)) {
+    if ((Test-Blank $id) -or (Test-Blank $name) -or (Test-Blank $unit)) {
         Send-RejectedResponse -Response $res -Message 'id, name, unit are required'
         return
     }
@@ -476,7 +477,7 @@ function Invoke-UpdateMemberRoute {
     $id = Get-StringField -Object $payload -Name 'id'
     $name = Get-StringField -Object $payload -Name 'name'
     $unit = Get-StringField -Object $payload -Name 'unit'
-    if ([string]::IsNullOrWhiteSpace($id) -or [string]::IsNullOrWhiteSpace($name) -or [string]::IsNullOrWhiteSpace($unit)) {
+    if ((Test-Blank $id) -or (Test-Blank $name) -or (Test-Blank $unit)) {
         Send-RejectedResponse -Response $res -Message 'id, name, unit are required'
         return
     }
@@ -512,7 +513,7 @@ function Invoke-DeleteMemberRoute {
     }
 
     $id = Get-StringField -Object $payload -Name 'id'
-    if ([string]::IsNullOrWhiteSpace($id)) {
+    if (Test-Blank $id) {
         Send-RejectedResponse -Response $res -Message 'id is required'
         return
     }
@@ -556,7 +557,7 @@ function Invoke-ReissueMemberRoute {
     }
 
     $id = Get-StringField -Object $payload -Name 'id'
-    if ([string]::IsNullOrWhiteSpace($id)) {
+    if (Test-Blank $id) {
         Send-RejectedResponse -Response $res -Message 'id is required'
         return
     }
@@ -595,7 +596,7 @@ function Invoke-AccessRoute {
     $location = Get-StringField -Object $payload -Name 'location'
     $serial = Get-StringField -Object $payload -Name 'serial'
 
-    if ([string]::IsNullOrWhiteSpace($type) -or [string]::IsNullOrWhiteSpace($location) -or [string]::IsNullOrWhiteSpace($serial)) {
+    if ((Test-Blank $type) -or (Test-Blank $location) -or (Test-Blank $serial)) {
         Send-RejectedResponse -Response $res -Message 'type, serial, location are required'
         return
     }
@@ -612,7 +613,7 @@ function Invoke-AccessRoute {
     }
 
     $id = Get-StringField -Object $member -Name 'id'
-    if ([string]::IsNullOrWhiteSpace($id)) {
+    if (Test-Blank $id) {
         Send-RejectedResponse -Response $res -Message 'serial is invalid'
         return
     }
@@ -730,7 +731,7 @@ function New-AcsApp {
 }
 
 function Start-AcsApp {
-    $script:AppRoot = if ([string]::IsNullOrWhiteSpace($PSScriptRoot)) { (Get-Location).Path } else { $PSScriptRoot }
+    $script:AppRoot = if (Test-Blank $PSScriptRoot) { (Get-Location).Path } else { $PSScriptRoot }
     $script:LogPath = Join-Path $script:AppRoot 'logs/access-log.csv'
     $script:ListPath = Join-Path $script:AppRoot 'list.json'
     $membersData = Import-Members
