@@ -1,0 +1,45 @@
+if (-not $psISE) {
+  throw "PowerShell ISE에서 실행하세요."
+}
+
+$opt = $psISE.Options
+
+$ui = @{
+  ScriptPaneBackgroundColor = "#0D1117"
+  ScriptPaneForegroundColor = "#C9D1D9"
+  ConsolePaneBackgroundColor = "#0D1117"
+  ConsolePaneForegroundColor = "#C9D1D9"
+  OutputPaneBackgroundColor = "#0D1117"
+  OutputPaneForegroundColor = "#C9D1D9"
+  ErrorForegroundColor = "#F85149"
+  WarningForegroundColor = "#D29922"
+  VerboseForegroundColor = "#58A6FF"
+  DebugForegroundColor = "#FFA657"
+}
+
+$tokens = @{
+  Attribute = "#79C0FF"
+  Command = "#D2A8FF"
+  CommandArgument = "#A5D6FF"
+  CommandParameter = "#7EE787"
+  Comment = "#8B949E"
+  Keyword = "#FF7B72"
+  Member = "#79C0FF"
+  Number = "#79C0FF"
+  Operator = "#FF7B72"
+  String = "#A5D6FF"
+  Type = "#FFA657"
+  Variable = "#FFA657"
+}
+
+foreach ($key in $ui.Keys) {
+  if ($opt.PSObject.Properties.Name -contains $key) {
+    $opt.$key = [Windows.Media.ColorConverter]::ConvertFromString($ui[$key])
+  }
+}
+
+foreach ($key in $tokens.Keys) {
+  if ($opt.TokenColors.ContainsKey($key)) {
+    $opt.TokenColors[$key] = [Windows.Media.ColorConverter]::ConvertFromString($tokens[$key])
+  }
+}
