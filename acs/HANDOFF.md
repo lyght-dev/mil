@@ -5,6 +5,7 @@
 - 스캐너 입력은 `EN`/`EX` 접두어 뒤 값을 `serial`로 해석해 `/access`에 보낸다. 서버는 `public/list.json`의 `serial`로 멤버를 찾고, 로그와 응답은 계속 `id`를 사용한다.
 - 현황판(`public/board.html`) 갱신은 polling이 아니라 `GET /event` SSE 기반이다. `access` 이벤트 수신 시 `public/list.json`, `public/location.json`, `logs/access-log.csv`를 다시 읽어 재렌더한다.
 - 현황판은 진입 시 Notification 권한이 `default`면 요청하고, 권한이 `granted`일 때만 `입영`/`퇴영` 시스템 알림을 띄운다.
+- 현황판 알림은 `exit`일 때 그라데이션 화살표 자산 `/public/exit-notification.svg`를 `Notification.icon`으로 사용한다. 브라우저/OS에 따라 SVG 아이콘 표시 방식은 달라질 수 있다.
 - 설정 페이지 CRUD/reissue 후에는 `allowedMembers`를 강제 재조회한다. `public/list.json`이 설정 화면의 SOT다.
 - `acs/public/script.js`의 문자열 기본값 처리는 `toText(value, fallback)` 경로로 통일돼 있다. 같은 종류의 정규화는 이 유틸을 우선 사용한다.
 - `serialLastReissuedAtKst`는 `public/list.json`에 저장되고 설정 화면에서는 상대 일수 텍스트로 표시된다.
@@ -15,6 +16,7 @@
 - `acs/app.ps1`의 SSE는 `milkit` 응답 wrapper 위에서 `$res.Context.Response`를 직접 다뤄 유지한다. SSE 경로 수정 시 `$res.IsSent` 처리 여부를 함께 확인한다.
 - `milkit/milkit.psm1`는 `.csv`를 `text/csv; charset=utf-8`로 매핑한다. 그래서 `GET /logs/access-log.csv`는 별도 수동 라우트 없이 static으로 응답한다.
 - `acs/app.ps1`의 `Read-JsonPayload`는 직접 `ConvertFrom-Json`하지 않고 `req.Json()`을 사용한다. JSON 파싱 캐시는 `milkit`에 맡기고, ACS 쪽에서는 malformed JSON과 빈 바디만 400으로 거부한다.
+- ISE 색상 프리셋으로 `acs/ps1-github-dark.theme`, `acs/ps1-github-light.theme`를 추가했다. 두 파일은 실행 즉시 `$psISE.Options` UI/토큰 색을 적용하는 스크립트 형식이다.
 
 ## Open Notes
 

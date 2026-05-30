@@ -113,6 +113,7 @@ const getMemberLabel = id => {
 };
 
 const canUseNotification = () => typeof window !== "undefined" && "Notification" in window;
+const EXIT_NOTIFICATION_ICON_URL = "/public/exit-notification.svg";
 
 const requestBoardNotificationPermission = async () => {
   if (!canUseNotification()) return;
@@ -136,9 +137,14 @@ const notifyAccessEvent = eventData => {
   const title = type === "entry" ? "입영" : "퇴영";
   const name = getMemberName(id) || id || "-";
   const body = `${name} / ${location || "-"}`;
+  const options = { body };
+
+  if (type === "exit") {
+    options.icon = EXIT_NOTIFICATION_ICON_URL;
+  }
 
   try {
-    new Notification(title, { body });
+    new Notification(title, options);
   } catch {
   }
 };
